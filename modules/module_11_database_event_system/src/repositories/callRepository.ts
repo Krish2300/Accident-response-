@@ -160,6 +160,23 @@ export class CallRepository {
     return toCallSession(row as unknown as Record<string, unknown>);
   }
 
+  /**
+   * Sessions still marked ACTIVE, oldest first.
+   *
+   * Scoped by status rather than by `endedAt` because a row can reach ACTIVE
+   * without an end time when a process dies between the two writes; the status
+   * column is the one that is always updated.
+   */
+  async activeSessions(): Promise<CallSessionRecord[]> {
+    return guardDatabase(async () => {
+      const rows = await this.db.callSession.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { startedAt: 'asc' },
+      });
+      return rows.map((row) => toCallSession(row as unknown as Record<string, unknown>));
+    }, 'Failed to list active call sessions');
+  }
+
   async endSession(id: string): Promise<CallSessionRecord | null> {
     return guardDatabase(async () => {
       const row = await this.db.callSession.update({

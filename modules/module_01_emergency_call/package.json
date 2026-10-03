@@ -1,0 +1,19 @@
+{
+  "name": "@resus/module_01_emergency_call",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 1 — emergency call intake and session lifecycle. Owns call/session creation, caller metadata and transport lifecycle. Reaches telephony only through the TelephonyProvider port, so the system runs with no carrier and a real SIP/PSTN integration drops in unchanged.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

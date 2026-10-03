@@ -185,3 +185,25 @@ export interface Transcript {
   recordedAt: string;
   isSimulation: boolean;
 }
+
+/**
+ * A live or finished call with the emergency it belongs to.
+ *
+ * Declared here rather than in the call repository so Module 1 (call lifecycle)
+ * can describe what it needs without taking a build-time dependency on Module 11
+ * (persistence). Module 11's `CallSessionRecord` satisfies this shape.
+ */
+export interface CallSession {
+  id: string;
+  emergencyId: string;
+  /** VOICE | SMS | WHATSAPP | LOOPBACK, or a telephony provider's own label. */
+  channel: string;
+  callerId: string | null;
+  /** ACTIVE | ENDED. */
+  status: string;
+  /** Normalised base language code, e.g. `en`. */
+  language: string;
+  startedAt: string;
+  endedAt: string | null;
+  isSimulation: boolean;
+}

@@ -10,6 +10,7 @@ import {
   type RouteDefinition,
 } from '@resus/core';
 import { createModule11, getPrismaClient } from '@resus/data';
+import { Module1 } from '@resus/call';
 import { Module5 } from '@resus/protocols';
 import { loadServerConfig, type ServerConfig } from './config.js';
 import { registerDevHarness } from './dev/protocolChat.js';
@@ -28,6 +29,7 @@ import { RealtimeHub } from './realtime/hub.js';
 export interface BuiltServer {
   fastify: FastifyInstance;
   module11: ReturnType<typeof createModule11>;
+  module1: Module1;
   module5: Module5;
   realtime: RealtimeHub;
   logger: Logger;
@@ -55,6 +57,15 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
   // Module 5 receives a persistence port, never the Prisma client.
   const module5 = new Module5({ sessions: module11.protocols, logger });
 
+  // Module 1 likewise receives ports. It picks its telephony transport from
+  // configuration, so the wiring below cannot silently install a different one.
+  const module1 = new Module1({
+    emergencies: module11.emergencies,
+    calls: module11.calls,
+    events: module11.eventPublisher,
+    logger,
+  });
+
   await fastify.register(jwt, { secret: config.jwtSecret });
   const auth = new AuthService(
     module11.users,
@@ -73,6 +84,7 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
   const table = new RouteTable();
   table.addAll(module11.routeDefinitions());
   module5.register(table);
+  module1.register(table);
   const registered = registerRoutes(fastify as never, table.routes as RouteDefinition<any>[], {
     authenticate: async (request) => auth.authenticate(request as never),
   });
@@ -146,5 +158,5 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
     await module11.dispose();
   };
 
-  return { fastify, module11, module5, realtime, logger, shutdown };
+  return { fastify, module11, module1, module5, realtime, logger, shutdown };
 }

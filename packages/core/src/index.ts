@@ -4,6 +4,7 @@ export * from './errors.js';
 export * from './geo.js';
 export * from './http.js';
 export * from './ports.js';
+export * from './providerPorts.js';
 export * from './domain/enums.js';
 export * from './domain/events.js';
 export * from './domain/models.js';
