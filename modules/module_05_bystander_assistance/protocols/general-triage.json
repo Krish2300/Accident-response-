@@ -1,0 +1,219 @@
+{
+  "protocol_id": "general-triage",
+  "version": "1.0.0",
+  "title": "General bystander triage and handover",
+  "source": {
+    "name": "European Resuscitation Council Guidelines 2021 - First Aid, general principles",
+    "publisher": "European Resuscitation Council",
+    "url": "https://www.erc.edu/guidelines",
+    "accessed": "2026-09-29",
+    "review_status": "UNREVIEWED",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "medical_disclaimer": "This protocol has not been reviewed by a clinician and is not a substitute for professional medical care. It is intended to support a bystander while emergency services are being contacted.",
+  "applies_to": {
+    "incident_types": [
+      "OTHER",
+      "TRAUMA_INJURY",
+      "CHEST_PAIN",
+      "OVERDOSE",
+      "ALLERGIC_REACTION",
+      "STROKE",
+      "SEVERE_BREATHING_DIFFICULTY",
+      "UNSAFE_SCENE"
+    ],
+    "age_groups": []
+  },
+  "entry_conditions": [],
+  "entry_step": "confirm-location",
+  "priority": 10,
+  "escalation_rules": [
+    {
+      "rule_id": "unsafe-scene",
+      "when": {
+        "fact": "scene_safe",
+        "op": "ne",
+        "value": "YES"
+      },
+      "reason": "The scene has not been confirmed safe.",
+      "action": "BOTH",
+      "severity": "CRITICAL",
+      "escalation_step": "unsafe-scene"
+    }
+  ],
+  "completion_conditions": [
+    {
+      "fact": "handover_complete",
+      "op": "eq",
+      "value": "YES"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "confirm-location",
+      "order": 0,
+      "type": "ACTION",
+      "instruction": "Get the exact location first: the building name, the floor, the nearest landmark, and what the person is near.",
+      "question": "What is the exact location, including the building, floor or nearest landmark?",
+      "requires_facts": [
+        "caller_location"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "caller_location",
+            "op": "exists"
+          },
+          "to": "confirm-safety",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "confirm-location",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 3
+    },
+    {
+      "step_id": "confirm-safety",
+      "order": 1,
+      "type": "DECISION",
+      "instruction": "Check that the scene is safe for you before you go to the person.",
+      "question": "Is the area safe, with no traffic, fire, electricity or danger?",
+      "requires_facts": [
+        "scene_safe"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "scene_safe",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "call-emergency-services",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "fact": "scene_safe",
+            "op": "ne",
+            "value": "YES"
+          },
+          "to": "unsafe-scene",
+          "action": "ESCALATE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "unsafe-scene",
+      "order": 2,
+      "type": "ESCALATE",
+      "instruction": "Do not approach. Stay where you are safe, call the emergency number and tell the operator what the danger is and where the person is.",
+      "question": "Have you called, and what is the danger?",
+      "requires_facts": [],
+      "transitions": [
+        {
+          "when": {
+            "always": true
+          },
+          "to": null,
+          "action": "ESCALATE",
+          "note": "Unsafe scene: do not approach."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ESCALATE"
+    },
+    {
+      "step_id": "call-emergency-services",
+      "order": 3,
+      "type": "ACTION",
+      "instruction": "Call the emergency number now and put the phone on speaker. Describe briefly what has happened and give the exact location again.",
+      "question": "Have you called, and what is happening with the person right now?",
+      "requires_facts": [],
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_dispatched",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "stay-with-patient",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "call-emergency-services",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 3
+    },
+    {
+      "step_id": "stay-with-patient",
+      "order": 4,
+      "type": "INFO",
+      "instruction": "Stay with the person. Keep them still, keep them warm, and reassure them. Do not give them anything to eat or drink.",
+      "question": "Are they still with you, and have the ambulance crew arrived?",
+      "requires_facts": [
+        "ambulance_arrived"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_arrived",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "handover",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "stay-with-patient",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP"
+    },
+    {
+      "step_id": "handover",
+      "order": 5,
+      "type": "INFO",
+      "instruction": "Tell the ambulance crew what you found and what you have done so far, then step back and follow their instructions.",
+      "question": "Have the ambulance crew taken over?",
+      "requires_facts": [
+        "handover_complete"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "handover_complete",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": null,
+          "action": "COMPLETE",
+          "note": "Handover to the ambulance crew is complete."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "COMPLETE"
+    }
+  ]
+}

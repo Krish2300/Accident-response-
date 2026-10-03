@@ -1,0 +1,12 @@
+{
+  "name": "@resus/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Emergency operations centre web client. A single bundler that composes the per-module frontend packages; no duplicated UI library, no second dev server.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  }
+}

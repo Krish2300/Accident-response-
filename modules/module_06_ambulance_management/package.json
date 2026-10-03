@@ -1,0 +1,22 @@
+{
+  "name": "@resus/module_06_ambulance_management",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 6 — ambulance fleet management, explainable assignment engine, live location tracking and the explicitly labelled simulation harness. Never imports database internals; persists through module 11 repositories.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src/assignment",
+    "src/tracking",
+    "src/simulation",
+    "frontend/src"
+  ],
+  "scripts": {
+    "simulate": "tsx src/simulation/run.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

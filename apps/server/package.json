@@ -1,0 +1,13 @@
+{
+  "name": "@resus/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The single HTTP + WebSocket host for the whole system. Composes module route plugins, authentication and the real-time hub. Deliberately contains no domain logic: exactly one backend process for the repository.",
+  "main": "./src/main.ts",
+  "scripts": {
+    "dev": "tsx watch ../../apps/server/src/main.ts",
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node20 --format=esm --packages=external --outfile=../../dist/server/server.js",
+    "start": "node ../../dist/server/server.js"
+  }
+}

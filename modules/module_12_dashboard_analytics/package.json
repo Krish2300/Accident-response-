@@ -1,0 +1,18 @@
+{
+  "name": "@resus/module_12_dashboard_analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 12 — operations dashboard read models, analytics aggregation and transparent outcome learning. Reads module 11 through read-only repositories and real-time events only; never writes to domain tables.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src/analytics",
+    "src/learning",
+    "frontend/src"
+  ],
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

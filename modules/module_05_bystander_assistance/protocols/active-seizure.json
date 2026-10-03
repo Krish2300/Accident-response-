@@ -1,0 +1,224 @@
+{
+  "protocol_id": "active-seizure",
+  "version": "1.0.0",
+  "title": "Active seizure - protect and reassure",
+  "source": {
+    "name": "European Resuscitation Council Guidelines 2021 - First Aid, seizures",
+    "publisher": "European Resuscitation Council",
+    "url": "https://www.erc.edu/guidelines",
+    "accessed": "2026-09-29",
+    "review_status": "UNREVIEWED",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "medical_disclaimer": "This protocol has not been reviewed by a clinician and is not a substitute for professional medical care. It is intended to support a bystander while emergency services are being contacted.",
+  "applies_to": {
+    "incident_types": [
+      "ACTIVE_SEIZURE"
+    ],
+    "age_groups": []
+  },
+  "entry_conditions": [
+    {
+      "fact": "seizure_active",
+      "op": "eq",
+      "value": "YES"
+    }
+  ],
+  "entry_step": "protect-from-injury",
+  "priority": 75,
+  "escalation_rules": [
+    {
+      "rule_id": "status-epilepticus-risk",
+      "when": {
+        "fact": "seizure_duration_minutes",
+        "op": "gte",
+        "value": 5
+      },
+      "reason": "A seizure lasting five minutes or longer needs emergency treatment immediately.",
+      "action": "BOTH",
+      "severity": "CRITICAL"
+    },
+    {
+      "rule_id": "repeated-seizures",
+      "when": {
+        "fact": "seizure_count",
+        "op": "gte",
+        "value": 2
+      },
+      "reason": "More than one seizure in a short period needs emergency treatment.",
+      "action": "BOTH",
+      "severity": "CRITICAL"
+    }
+  ],
+  "completion_conditions": [
+    {
+      "fact": "seizure_active",
+      "op": "eq",
+      "value": "NO"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "protect-from-injury",
+      "order": 0,
+      "type": "ACTION",
+      "instruction": "Move hard or sharp objects away from around the person and protect their head. Do not hold them down and do not put anything in their mouth.",
+      "question": "Have you cleared the area around them, and are they on their side?",
+      "requires_facts": [],
+      "transitions": [
+        {
+          "when": {
+            "fact": "seizure_active",
+            "op": "eq",
+            "value": "NO"
+          },
+          "to": "recovery-position",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "call-emergency-services",
+          "action": "ADVANCE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "call-emergency-services",
+      "order": 1,
+      "type": "ACTION",
+      "instruction": "Call the emergency number and say the person is having a seizure and how long it has lasted. Give your exact location and stay on the line.",
+      "question": "Have you called, how long has the seizure lasted, and what is your exact location?",
+      "requires_facts": [
+        "caller_location",
+        "seizure_duration_minutes"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "caller_location",
+            "op": "exists"
+          },
+          "to": "time-the-seizure",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "call-emergency-services",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 3,
+      "fact_questions": {
+        "caller_location": "Are you with the person right now?",
+        "seizure_duration_minutes": "Roughly how long has the seizure been going on?"
+      }
+    },
+    {
+      "step_id": "time-the-seizure",
+      "order": 2,
+      "type": "ACTION",
+      "instruction": "Note the time the seizure started. Stay close, speak calmly, and time how long the seizure lasts.",
+      "question": "What time did the seizure start, and how long has it lasted?",
+      "requires_facts": [
+        "seizure_duration_minutes"
+      ],
+      "repeat_interval_minutes": 1,
+      "transitions": [
+        {
+          "when": {
+            "fact": "seizure_active",
+            "op": "eq",
+            "value": "NO"
+          },
+          "to": "recovery-position",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "time-the-seizure",
+          "action": "LOOP",
+          "note": "Keep timing the seizure."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP"
+    },
+    {
+      "step_id": "recovery-position",
+      "order": 3,
+      "type": "ACTION",
+      "instruction": "When the seizure stops, roll the person onto their side so that anything from the stomach can drain out of the mouth. Keep their airway clear.",
+      "question": "Are they breathing, and are they on their side?",
+      "requires_facts": [
+        "breathing_status"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "breathing_status",
+            "op": "in",
+            "value": [
+              "NOT_BREATHING",
+              "AGHASTIC",
+              "GASPNING_AGAINST"
+            ]
+          },
+          "to": null,
+          "action": "ESCALATE",
+          "note": "The person is not breathing normally after the seizure. Emergency treatment and chest compressions are needed now."
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "monitor-recovery",
+          "action": "ADVANCE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "monitor-recovery",
+      "order": 4,
+      "type": "INFO",
+      "instruction": "Stay with the person while they recover. Do not give them anything to eat or drink until they are fully awake. Tell the ambulance crew how long the seizure lasted.",
+      "question": "Are they recovering, and has the ambulance crew taken over?",
+      "requires_facts": [
+        "ambulance_arrived"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_arrived",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": null,
+          "action": "COMPLETE",
+          "note": "Professional help has taken over."
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "monitor-recovery",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP"
+    }
+  ]
+}

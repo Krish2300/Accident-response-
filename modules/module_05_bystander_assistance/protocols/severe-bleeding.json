@@ -1,0 +1,222 @@
+{
+  "protocol_id": "severe-bleeding",
+  "version": "1.0.0",
+  "title": "Severe bleeding control",
+  "source": {
+    "name": "European Resuscitation Council Guidelines 2021 - First Aid",
+    "publisher": "European Resuscitation Council",
+    "url": "https://www.erc.edu/guidelines",
+    "accessed": "2026-09-29",
+    "review_status": "UNREVIEWED",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "medical_disclaimer": "This protocol has not been reviewed by a clinician and is not a substitute for professional medical care. It is intended to support a bystander while emergency services are being contacted.",
+  "applies_to": {
+    "incident_types": [
+      "SEVERE_BLEEDING",
+      "TRAUMA_INJURY"
+    ],
+    "age_groups": []
+  },
+  "entry_conditions": [
+    {
+      "fact": "severe_bleeding",
+      "op": "eq",
+      "value": "YES"
+    }
+  ],
+  "entry_step": "scene-safety",
+  "priority": 90,
+  "escalation_rules": [
+    {
+      "rule_id": "scene-safety-first",
+      "when": {
+        "fact": "scene_safe",
+        "op": "ne",
+        "value": "YES"
+      },
+      "reason": "The scene has not been confirmed safe, so no physical intervention may be directed.",
+      "action": "BOTH",
+      "severity": "CRITICAL",
+      "escalation_step": "call-without-approaching"
+    }
+  ],
+  "completion_conditions": [
+    {
+      "fact": "ambulance_dispatched",
+      "op": "eq",
+      "value": "YES"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "scene-safety",
+      "order": 0,
+      "type": "DECISION",
+      "instruction": "Check that the scene is safe before you touch the injury.",
+      "question": "Is the area safe for you to approach?",
+      "requires_facts": [
+        "scene_safe"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "scene_safe",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "call-emergency-services",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "fact": "scene_safe",
+            "op": "ne",
+            "value": "YES"
+          },
+          "to": "call-without-approaching",
+          "action": "ESCALATE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "call-without-approaching",
+      "order": 1,
+      "type": "ESCALATE",
+      "instruction": "Do not approach the person. Stay where you are safe, call the emergency number and describe the bleeding and the danger.",
+      "question": "Have you called the emergency number, and what is the danger?",
+      "requires_facts": [],
+      "transitions": [
+        {
+          "when": {
+            "always": true
+          },
+          "to": null,
+          "action": "ESCALATE",
+          "note": "Unsafe scene: do not approach a bleeding patient."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ESCALATE"
+    },
+    {
+      "step_id": "call-emergency-services",
+      "order": 2,
+      "type": "ACTION",
+      "instruction": "Call the emergency number now and put the phone on speaker. Tell the operator about the heavy bleeding and give your exact location.",
+      "question": "Have you called, and what is your exact location?",
+      "requires_facts": [
+        "caller_location"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "caller_location",
+            "op": "exists"
+          },
+          "to": "apply-pressure",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "call-emergency-services",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 3
+    },
+    {
+      "step_id": "apply-pressure",
+      "order": 3,
+      "type": "ACTION",
+      "instruction": "Press firmly on the wound with your hand or with a clean cloth. Keep pressing without lifting to check, even if the blood soaks through.",
+      "question": "Are you able to keep firm pressure on the wound?",
+      "requires_facts": [
+        "pressure_applied"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "pressure_applied",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "pack-wound",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "apply-pressure",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 2
+    },
+    {
+      "step_id": "pack-wound",
+      "order": 4,
+      "type": "ACTION",
+      "instruction": "If the bleeding does not stop, press harder and keep pressing until help arrives. Do not remove a dressing that is already in place.",
+      "question": "Is the bleeding slowing or continuing?",
+      "requires_facts": [
+        "bleeding_controlled"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "bleeding_controlled",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "monitor-patient",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "pack-wound",
+          "action": "LOOP",
+          "note": "Maintain pressure until the crew arrive."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP"
+    },
+    {
+      "step_id": "monitor-patient",
+      "order": 5,
+      "type": "INFO",
+      "instruction": "Keep the person lying down and warm, and keep pressure on the wound. Stay with them and tell the crew what happened when they arrive.",
+      "question": "Have the ambulance crew taken over?",
+      "requires_facts": [
+        "ambulance_arrived"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_arrived",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": null,
+          "action": "COMPLETE",
+          "note": "Professional help has taken over."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "COMPLETE"
+    }
+  ]
+}

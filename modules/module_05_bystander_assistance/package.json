@@ -1,0 +1,22 @@
+{
+  "name": "@resus/module_05_bystander_assistance",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 5 — bystander assistance. Deterministic protocol engine plus a swappable LLM provider abstraction (default: local Ollama + Qwen3 8B). Never touches module 6 or 12 internals.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src/llm",
+    "src/protocol_engine",
+    "protocols",
+    "frontend/src"
+  ],
+  "scripts": {
+    "validate:protocols": "tsx src/protocol_engine/validateCatalogues.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

@@ -1,0 +1,373 @@
+{
+  "protocol_id": "cardiac-arrest-adult",
+  "version": "1.0.0",
+  "title": "Adult cardiac arrest - bystander CPR",
+  "source": {
+    "name": "European Resuscitation Council Guidelines 2021 - Adult Basic Life Support",
+    "publisher": "European Resuscitation Council",
+    "url": "https://www.erc.edu/guidelines",
+    "accessed": "2026-09-29",
+    "review_status": "UNREVIEWED",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "medical_disclaimer": "This protocol has not been reviewed by a clinician and is not a substitute for professional medical care. It is intended to support a bystander while emergency services are being contacted.",
+  "applies_to": {
+    "incident_types": [
+      "CARDIAC_ARREST",
+      "PATIENT_NOT_BREATHING",
+      "UNCONSCIOUS"
+    ],
+    "age_groups": [
+      "ADULT",
+      "ELDERLY"
+    ]
+  },
+  "entry_conditions": [
+    {
+      "fact": "breathing_status",
+      "op": "in",
+      "value": [
+        "NOT_BREATHING",
+        "AGHASTIC",
+        "GASPNING_AGAINST"
+      ]
+    },
+    {
+      "fact": "responsive",
+      "op": "eq",
+      "value": "NO"
+    }
+  ],
+  "entry_step": "confirm-arrest",
+  "priority": 95,
+  "escalation_rules": [
+    {
+      "rule_id": "scene-safety-first",
+      "when": {
+        "fact": "scene_safe",
+        "op": "ne",
+        "value": "YES"
+      },
+      "reason": "The scene has not been confirmed safe, so no physical intervention may be directed.",
+      "action": "BOTH",
+      "severity": "CRITICAL",
+      "escalation_step": "scene-unsafe"
+    },
+    {
+      "rule_id": "bystander-alone",
+      "when": {
+        "fact": "caller_with_patient",
+        "op": "ne",
+        "value": "YES"
+      },
+      "reason": "The caller is not with the patient and cannot perform the instructed steps.",
+      "action": "BOTH",
+      "severity": "URGENT"
+    }
+  ],
+  "completion_conditions": [
+    {
+      "fact": "ambulance_dispatched",
+      "op": "eq",
+      "value": "YES"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "confirm-arrest",
+      "order": 0,
+      "type": "DECISION",
+      "instruction": "Shout for help, then check whether the person is unresponsive and not breathing normally.",
+      "question": "Is the person unresponsive and are they not breathing normally?",
+      "requires_facts": [
+        "responsive",
+        "breathing_status"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "all": [
+              {
+                "fact": "responsive",
+                "op": "eq",
+                "value": "NO"
+              },
+              {
+                "fact": "breathing_status",
+                "op": "in",
+                "value": [
+                  "NOT_BREATHING",
+                  "AGHASTIC",
+                  "GASPNING_AGAINST"
+                ]
+              }
+            ]
+          },
+          "to": "check-scene-safety",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "any": [
+              {
+                "fact": "responsive",
+                "op": "eq",
+                "value": "YES"
+              },
+              {
+                "fact": "breathing_status",
+                "op": "in",
+                "value": [
+                  "BREATHING"
+                ]
+              }
+            ]
+          },
+          "to": "reassure-monitor",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "clarify-arrest",
+          "action": "LOOP",
+          "note": "Arrest signs not yet confirmed."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "fact_questions": {
+        "responsive": "Is the person unresponsive?",
+        "breathing_status": "Are they breathing normally, gasping occasionally, or not breathing at all?"
+      }
+    },
+    {
+      "step_id": "clarify-arrest",
+      "order": 1,
+      "type": "QUESTION",
+      "instruction": "Look for chest movement and listen for normal breathing before you start.",
+      "question": "Do you see the chest moving, and are the breaths normal or occasional gasping?",
+      "requires_facts": [],
+      "transitions": [
+        {
+          "when": {
+            "always": true
+          },
+          "to": "confirm-arrest",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP",
+      "max_repeats": 2
+    },
+    {
+      "step_id": "check-scene-safety",
+      "order": 2,
+      "type": "DECISION",
+      "instruction": "Before anyone touches the person, check that the scene is safe for you and the patient.",
+      "question": "Is the area safe, with no traffic, fire, electricity or danger nearby?",
+      "requires_facts": [
+        "scene_safe"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "scene_safe",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "call-emergency-services",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "fact": "scene_safe",
+            "op": "ne",
+            "value": "YES"
+          },
+          "to": "scene-unsafe",
+          "action": "ESCALATE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "scene-unsafe",
+      "order": 3,
+      "type": "ESCALATE",
+      "instruction": "Do not approach or touch the patient. Move to safety and tell the emergency operator exactly what the danger is.",
+      "question": "What is the danger, and where exactly are you right now?",
+      "requires_facts": [
+        "caller_location"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "always": true
+          },
+          "to": null,
+          "action": "ESCALATE",
+          "note": "Unsafe scene: bystander must not approach the patient."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ESCALATE"
+    },
+    {
+      "step_id": "call-emergency-services",
+      "order": 4,
+      "type": "ACTION",
+      "instruction": "Call the emergency number now, or ask a specific bystander to call, and put the phone on speaker. Say that the person is unresponsive and not breathing normally and give your exact location.",
+      "question": "Have you called the emergency number, and what is your exact location?",
+      "requires_facts": [
+        "caller_location"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "caller_location",
+            "op": "exists"
+          },
+          "to": "start-compressions",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "call-emergency-services",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 3
+    },
+    {
+      "step_id": "start-compressions",
+      "order": 5,
+      "type": "ACTION",
+      "instruction": "Lay the person flat on their back on a firm surface. Kneel beside the chest, place the heel of one hand in the centre of the chest, put the other hand on top, and press down hard and fast in the middle of the chest.",
+      "question": "Are you pushing hard in the middle of the chest, about a third of the depth of the chest?",
+      "requires_facts": [
+        "cpr_started"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "cpr_started",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "compressions-and-breaths",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "start-compressions",
+          "action": "LOOP"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "max_repeats": 2
+    },
+    {
+      "step_id": "compressions-and-breaths",
+      "order": 6,
+      "type": "ACTION",
+      "instruction": "Keep pressing in the centre of the chest at a steady rate of about two pushes per second, and let the chest come all the way up between pushes.",
+      "question": "Is the chest coming fully back up between each push?",
+      "requires_facts": [
+        "cpr_started"
+      ],
+      "repeat_interval_minutes": 2,
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_arrived",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "handover",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "compressions-and-breaths",
+          "action": "LOOP",
+          "note": "Continue compressions until help takes over."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP"
+    },
+    {
+      "step_id": "handover",
+      "order": 7,
+      "type": "INFO",
+      "instruction": "When the ambulance crew arrive, tell them how long the person has been unresponsive and that chest compressions were started. Step back and let them take over.",
+      "question": "Have the ambulance crew taken over from you?",
+      "requires_facts": [
+        "ambulance_arrived"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_arrived",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": null,
+          "action": "COMPLETE",
+          "note": "Professional help has taken over."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "COMPLETE"
+    },
+    {
+      "step_id": "reassure-monitor",
+      "order": 8,
+      "type": "INFO",
+      "instruction": "Keep talking to the person, keep them still and warm, and stay with them until help arrives. Do not give them anything to eat or drink.",
+      "question": "Are they breathing normally and responding to your voice?",
+      "requires_facts": [
+        "breathing_status"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "breathing_status",
+            "op": "in",
+            "value": [
+              "NOT_BREATHING",
+              "AGHASTIC",
+              "GASPNING_AGAINST"
+            ]
+          },
+          "to": "confirm-arrest",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": null,
+          "action": "COMPLETE",
+          "note": "Patient is breathing and responding; monitor until help arrives."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "COMPLETE"
+    }
+  ]
+}

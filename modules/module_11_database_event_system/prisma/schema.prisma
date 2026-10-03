@@ -1,0 +1,525 @@
+// =============================================================================
+// MODULE 11 — DATABASE + EVENT SYSTEM
+// Prisma schema: the single source of truth for every table in the system.
+//
+// Dialect notes
+// -------------
+// The development default is SQLite so the prototype runs with zero external
+// services. SQLite has no native enum and no JSON scalar in Prisma, therefore
+// every enumerated column is a `String` validated at the repository boundary by
+// the zod schemas in `packages/core/src/domain/schemas.ts`, and every JSON
+// document is stored as a serialised `String` (`*Json` suffix) accessed only
+// through the typed mappers in `src/models`.
+//
+// Switching to PostgreSQL: change `provider`, update `DATABASE_URL`, and the
+// string columns may optionally be promoted to native enums / jsonb. No code
+// outside `src/models` needs to change.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Identity & access
+// -----------------------------------------------------------------------------
+
+model User {
+  id           String   @id
+  email        String   @unique
+  displayName  String
+  /// bcrypt hash. Plaintext passwords are never stored or logged.
+  passwordHash String
+  role         String   @default("OPERATOR")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  outcomes          Outcome[]
+  assignments       AmbulanceAssignment[]
+  protocolSessions  ProtocolSession[]
+
+  @@index([role])
+  @@map("users")
+}
+
+// -----------------------------------------------------------------------------
+// Emergency core
+// -----------------------------------------------------------------------------
+
+model Emergency {
+  id                   String    @id
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  status               String    @default("CREATED")
+  incidentType         String
+  severity             String
+  latitude             Float
+  longitude            Float
+  description          String?
+  callerId             String?
+  assignedAmbulanceId  String?
+  selectedHospitalId   String?
+  /// Hard provenance flag. Simulation rows are never aggregated together with
+  /// production rows unless the caller explicitly opts in.
+  isSimulation         Boolean   @default(false)
+  address              String?
+
+  assignedAmbulance Ambulance?  @relation("EmergencyAssignedAmbulance", fields: [assignedAmbulanceId], references: [id], onDelete: SetNull)
+  selectedHospital  Hospital?   @relation("EmergencySelectedHospital", fields: [selectedHospitalId], references: [id], onDelete: SetNull)
+  currentUnits       Ambulance[] @relation("AmbulanceCurrentEmergency")
+
+  callSessions      CallSession[]
+  transcripts       Transcript[]
+  protocolSessions  ProtocolSession[]
+  assignments       AmbulanceAssignment[]
+  routes            Route[]
+  corridor          Corridor?
+  decisions         Decision[]
+  outcome           Outcome?
+  learningSample    LearningSample?
+  systemEvents      SystemEvent[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([incidentType])
+  @@index([createdAt])
+  @@index([isSimulation, status])
+  @@map("emergencies")
+}
+
+model CallSession {
+  id          String    @id
+  emergencyId String
+  channel     String    @default("VOICE")
+  callerId    String?
+  status      String    @default("ACTIVE")
+  language    String    @default("en")
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  isSimulation Boolean  @default(false)
+
+  emergency  Emergency   @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  transcripts Transcript[]
+
+  @@index([emergencyId])
+  @@index([startedAt])
+  @@map("call_sessions")
+}
+
+model Transcript {
+  id             String   @id
+  callSessionId  String
+  emergencyId    String
+  sequence       Int
+  speaker        String
+  text           String
+  isFinal        Boolean  @default(true)
+  intent         String?
+  confidence     Float?
+  recordedAt     DateTime @default(now())
+  isSimulation   Boolean  @default(false)
+
+  callSession CallSession @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  emergency   Emergency   @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+
+  @@unique([callSessionId, sequence])
+  @@index([emergencyId, sequence])
+  @@map("transcripts")
+}
+
+// -----------------------------------------------------------------------------
+// Module 5 — protocol engine persistence
+// -----------------------------------------------------------------------------
+
+model ProtocolSession {
+  id                 String    @id
+  emergencyId        String
+  protocolId         String
+  protocolVersion    String
+  /// Authoritative guidance the protocol content was transcribed from.
+  protocolSource     String
+  currentStep        String
+  status             String    @default("ACTIVE")
+  startedAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  completedAt        DateTime?
+  escalationRequired Boolean   @default(false)
+  escalationReason   String?
+  clarificationCount Int       @default(0)
+  /// Facts extracted and confirmed so far (JSON string).
+  collectedFactsJson String    @default("{}")
+  /// Which LLM produced the language for this session.
+  llmProvider        String    @default("ollama")
+  llmModel           String    @default("qwen3:8b")
+  degraded           Boolean   @default(false)
+  initiatedBy        String    @default("SYSTEM")
+  initiatedByUserId  String?
+
+  emergency Emergency        @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  steps     ProtocolStep[]
+  user      User?           @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([emergencyId])
+  @@index([status])
+  @@map("protocol_sessions")
+}
+
+model ProtocolStep {
+  id                String    @id
+  protocolSessionId String
+  /// Step identifier inside the versioned protocol catalogue.
+  stepId            String
+  orderIndex        Int
+  status            String    @default("PENDING")
+  presentedAt       DateTime?
+  completedAt       DateTime?
+  resultJson        String?
+
+  protocolSession ProtocolSession @relation(fields: [protocolSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([protocolSessionId, stepId])
+  @@index([protocolSessionId, orderIndex])
+  @@map("protocol_steps")
+}
+
+// -----------------------------------------------------------------------------
+// Module 6 — fleet
+// -----------------------------------------------------------------------------
+
+model Ambulance {
+  id                String    @id
+  vehicleNumber     String    @unique
+  status            String    @default("AVAILABLE")
+  latitude          Float?
+  longitude         Float?
+  lastLocationUpdate DateTime?
+  currentEmergencyId String?
+  assignedAt        DateTime?
+  availableAt       DateTime?
+  /// JSON array of EQUIPMENT_CODES.
+  equipmentJson     String    @default("[]")
+  stationName       String?
+  isSimulation      Boolean   @default(false)
+  /// Odometer-ish counters used by the simulation harness only.
+  simulatedSpeedKmh Float?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  currentEmergency Emergency?  @relation("AmbulanceCurrentEmergency", fields: [currentEmergencyId], references: [id], onDelete: SetNull)
+  assignedTo      Emergency[] @relation("EmergencyAssignedAmbulance")
+  crew            AmbulanceCrew[]
+  locations       AmbulanceLocation[]
+  assignments     AmbulanceAssignment[]
+
+  @@index([status])
+  @@index([isSimulation, status])
+  @@index([currentEmergencyId])
+  @@map("ambulances")
+}
+
+model AmbulanceCrew {
+  id              String  @id
+  ambulanceId     String
+  name            String
+  role            String
+  /// JSON array of CREW_CAPABILITIES.
+  capabilitiesJson String @default("[]")
+  isOnDuty        Boolean @default(true)
+
+  ambulance Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
+
+  @@index([ambulanceId])
+  @@map("ambulance_crew")
+}
+
+/// Append-only GPS trail. One row per accepted position report.
+model AmbulanceLocation {
+  id           String   @id
+  ambulanceId  String
+  latitude     Float
+  longitude    Float
+  speedKmh     Float?
+  headingDeg   Float?
+  accuracyM    Float?
+  recordedAt   DateTime @default(now())
+  source       String   @default("GPS")
+  isSimulation Boolean  @default(false)
+
+  ambulance Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
+
+  @@index([ambulanceId, recordedAt])
+  @@map("ambulance_locations")
+}
+
+model AmbulanceAssignment {
+  id                       String   @id
+  emergencyId              String
+  ambulanceId              String
+  status                   String   @default("ASSIGNED")
+  source                   String   @default("AUTOMATIC")
+  distanceKm               Float
+  estimatedResponseTimeMin Float
+  score                    Float
+  /// JSON array of human-readable match factors.
+  matchingFactorsJson      String   @default("[]")
+  /// JSON map ambulanceId -> why the candidate was rejected.
+  rejectedReasonsJson      String   @default("{}")
+  overrideReason           String?
+  consideredCandidates     Int      @default(0)
+  decidedAt                DateTime @default(now())
+  createdAt                DateTime @default(now())
+  releasedAt               DateTime?
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  ambulance Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
+  decidedBy User?     @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  decidedByUserId String?
+
+  @@index([emergencyId])
+  @@index([ambulanceId])
+  @@index([status])
+  @@map("ambulance_assignments")
+}
+
+// -----------------------------------------------------------------------------
+// Hospitals, routing, corridors
+// -----------------------------------------------------------------------------
+
+model Hospital {
+  id                  String   @id
+  name                String
+  latitude            Float
+  longitude           Float
+  status              String   @default("OPEN")
+  /// JSON array of HOSPITAL_CAPABILITIES.
+  capabilitiesJson    String   @default("[]")
+  traumaLevel         Int      @default(1)
+  acceptingEmergencies Boolean @default(true)
+  address             String?
+  contactPhone        String?
+  isSimulation        Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  emergencies    Emergency[] @relation("EmergencySelectedHospital")
+  corridors      Corridor[]
+  learningSamples LearningSample[]
+  routes         Route[]
+
+  @@index([status])
+  @@map("hospitals")
+}
+
+model Route {
+  id            String   @id
+  emergencyId   String
+  ambulanceId   String
+  hospitalId    String?
+  originName    String   @default("INCIDENT")
+  destinationName String @default("SCENE")
+  originLat     Float
+  originLng     Float
+  destLat       Float
+  destLng       Float
+  distanceKm    Float
+  /// Encoded polyline points (JSON array of [lat,lng]).
+  polylineJson  String   @default("[]")
+  progressPct   Float    @default(0)
+  status        String   @default("PLANNED")
+  estimatedMinutes Float?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  isSimulation  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  emergency Emergency     @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  hospital  Hospital?     @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+  updates   RouteUpdate[]
+
+  @@index([emergencyId])
+  @@index([hospitalId])
+  @@map("routes")
+}
+
+model RouteUpdate {
+  id         String   @id
+  routeId    String
+  progressPct Float
+  positionLat Float?
+  positionLng Float?
+  remainingKm  Float?
+  note       String?
+  recordedAt DateTime @default(now())
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, recordedAt])
+  @@map("route_updates")
+}
+
+/// A pre-negotiated "emergency corridor": ambulance-to-hospital priority lane.
+model Corridor {
+  id            String    @id
+  emergencyId   String    @unique
+  ambulanceId   String
+  hospitalId    String
+  fromLabel     String
+  toLabel       String
+  estimatedMinutes Float
+  isActive      Boolean   @default(true)
+  activatedAt   DateTime  @default(now())
+  releasedAt    DateTime?
+  isSimulation  Boolean   @default(false)
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  hospital  Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+  @@map("corridors")
+}
+
+// -----------------------------------------------------------------------------
+// Event log
+// -----------------------------------------------------------------------------
+
+/// Append-only. `seq` is a monotonic autoincrement key that gives total order
+/// without relying on timestamps. UPDATE and DELETE are blocked by database
+/// triggers declared in the second migration under prisma/migrations.
+model SystemEvent {
+  seq          Int      @id @default(autoincrement())
+  id           String   @unique
+  type         String
+  emergencyId  String?
+  entityType   String?
+  entityId     String?
+  /// JSON payload string.
+  payloadJson  String   @default("{}")
+  /// JSON metadata string.
+  metadataJson String?
+  actorType    String?
+  actorId      String?
+  recordedAt   DateTime @default(now())
+
+  emergency Emergency? @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+
+  @@index([emergencyId, seq])
+  @@index([type, seq])
+  @@index([recordedAt])
+  @@index([entityId])
+  @@map("system_events")
+}
+
+// -----------------------------------------------------------------------------
+// Decision + outcome + learning
+// -----------------------------------------------------------------------------
+
+model Decision {
+  id                   String   @id
+  emergencyId          String
+  decisionType         String
+  ambulanceId          String?
+  hospitalId           String?
+  /// JSON array of the options that were evaluated.
+  optionsConsideredJson String  @default("[]")
+  chosen               String
+  reasoning            String
+  confidence           Float
+  actorType            String   @default("SYSTEM")
+  actorId              String?
+  createdAt            DateTime @default(now())
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+
+  @@index([emergencyId, createdAt])
+  @@index([decisionType])
+  @@map("decisions")
+}
+
+model Outcome {
+  id                     String   @id
+  emergencyId            String   @unique
+  status                 String
+  provenance             String   @default("REAL_OBSERVED")
+  survivalToDischarge    Boolean?
+  notes                  String?
+  recordedAt             DateTime @default(now())
+  recordedByUserId       String?
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  recordedBy User?     @relation(fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("outcomes")
+}
+
+/// One row per completed emergency: the feature vector the outcome-learning
+/// layer trains on. Never contains patient-identifying data.
+model LearningSample {
+  id                  String   @id
+  emergencyId         String   @unique
+  hospitalId          String?
+  emergencyType       String
+  severity            String
+  responseTimeMin     Float?
+  dispatchTimeMin     Float?
+  ambulanceDistanceKm Float?
+  hospitalDistanceKm  Float?
+  protocolUsed        String?
+  protocolVersion     String?
+  escalationRequired  Boolean  @default(false)
+  routeDurationMin    Float?
+  transportTimeMin    Float?
+  totalDurationMin    Float?
+  outcomeStatus       String
+  survivalToDischarge Boolean?
+  /// JSON feature bag (transparent, human readable).
+  featuresJson        String   @default("{}")
+  provenance          String   @default("REAL_OBSERVED")
+  recordedAt          DateTime @default(now())
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  hospital  Hospital? @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+
+  @@index([emergencyType, recordedAt])
+  @@index([provenance])
+  @@map("learning_samples")
+}
+
+model AnalyticsSnapshot {
+  id         String   @id
+  windowDays Int
+  /// JSON metric document.
+  metricsJson String
+  provenance String  @default("STATISTICAL_ESTIMATE")
+  sampleSize Int      @default(0)
+  computedAt DateTime @default(now())
+
+  @@index([computedAt])
+  @@map("analytics_snapshots")
+}
+
+/// Append-only model version history for the outcome-learning layer.
+model LearningModelVersion {
+  id            String   @id
+  version       Int      @unique
+  samples       Int      @default(0)
+  priorAlpha    Float
+  priorBeta     Float
+  /// JSON posterior counts per outcome status.
+  posteriorJson String   @default("{}")
+  /// JSON per-stratum (emergencyType x severity) rates.
+  strataJson    String   @default("{}")
+  method        String   @default("bayesian-dirichlet-laplace")
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([version])
+  @@map("learning_model_versions")
+}

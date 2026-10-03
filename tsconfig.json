@@ -1,0 +1,34 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@resus/core": ["packages/core/src/index.ts"],
+      "@resus/core/*": ["packages/core/src/*"],
+      "@resus/data": ["modules/module_11_database_event_system/src/index.ts"],
+      "@resus/protocols": ["modules/module_05_bystander_assistance/src/index.ts"],
+      "@resus/fleet": ["modules/module_06_ambulance_management/src/index.ts"],
+      "@resus/analytics": ["modules/module_12_dashboard_analytics/src/index.ts"],
+      "@resus/module_11_database_event_system": ["modules/module_11_database_event_system/src/index.ts"],
+      "@resus/module_11_database_event_system/*": ["modules/module_11_database_event_system/src/*"],
+      "@resus/module_05_bystander_assistance": ["modules/module_05_bystander_assistance/src/index.ts"],
+      "@resus/module_05_bystander_assistance/*": ["modules/module_05_bystander_assistance/src/*"],
+      "@resus/module_06_ambulance_management": ["modules/module_06_ambulance_management/src/index.ts"],
+      "@resus/module_06_ambulance_management/*": ["modules/module_06_ambulance_management/src/*"],
+      "@resus/module_12_dashboard_analytics": ["modules/module_12_dashboard_analytics/src/index.ts"],
+      "@resus/module_12_dashboard_analytics/*": ["modules/module_12_dashboard_analytics/src/*"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "modules/*/src/**/*.ts",
+    "modules/*/tests/**/*.ts",
+    "modules/*/frontend/src/**/*.ts",
+    "modules/*/frontend/src/**/*.tsx",
+    "apps/server/src/**/*.ts",
+    "apps/dashboard/src/**/*.ts",
+    "apps/dashboard/src/**/*.tsx",
+    "scripts/**/*.ts",
+    "*.ts"
+  ]
+}

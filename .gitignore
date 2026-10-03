@@ -1,7 +1,33 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+npm-debug.log*
+
+# environment / secrets — never commit
 .env
-.venv/
-venv/
-__pycache__/
-*.pyc
-.pytest_cache/
+.env.*
+!.env.example
+*.pem
+*.key
+
+# database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+prisma/*.db
+prisma/*.db-journal
+
+# generated clients
+packages/*/node_modules
+apps/*/node_modules
+modules/*/node_modules
+
+# editors / OS
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,303 @@
+{
+  "protocol_id": "choking-adult",
+  "version": "1.0.0",
+  "title": "Adult choking - back blows and abdominal thrusts",
+  "source": {
+    "name": "European Resuscitation Council Guidelines 2021 - Adult Basic Life Support, foreign-body airway obstruction",
+    "publisher": "European Resuscitation Council",
+    "url": "https://www.erc.edu/guidelines",
+    "accessed": "2026-09-29",
+    "review_status": "UNREVIEWED",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "medical_disclaimer": "This protocol has not been reviewed by a clinician and is not a substitute for professional medical care. It is intended to support a bystander while emergency services are being contacted.",
+  "applies_to": {
+    "incident_types": [
+      "CHOKING"
+    ],
+    "age_groups": [
+      "ADULT",
+      "ELDERLY",
+      "CHILD"
+    ]
+  },
+  "entry_conditions": [
+    {
+      "fact": "choking_signs",
+      "op": "eq",
+      "value": "CANNOT_SPEAK_OR_COUGH"
+    }
+  ],
+  "entry_step": "confirm-choking",
+  "priority": 92,
+  "escalation_rules": [
+    {
+      "rule_id": "scene-safety-first",
+      "when": {
+        "fact": "scene_safe",
+        "op": "ne",
+        "value": "YES"
+      },
+      "reason": "The scene has not been confirmed safe, so no physical intervention may be directed.",
+      "action": "BOTH",
+      "severity": "CRITICAL",
+      "escalation_step": "unresponsive-collapse"
+    },
+    {
+      "rule_id": "unresponsive-choking-patient",
+      "when": {
+        "fact": "responsive",
+        "op": "eq",
+        "value": "NO"
+      },
+      "reason": "An unresponsive choking patient needs emergency treatment, not further thrusts.",
+      "action": "BOTH",
+      "severity": "CRITICAL"
+    }
+  ],
+  "completion_conditions": [
+    {
+      "fact": "ambulance_dispatched",
+      "op": "eq",
+      "value": "YES"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "confirm-choking",
+      "order": 0,
+      "type": "DECISION",
+      "instruction": "Ask the person if they are choking and can they speak or cough.",
+      "question": "Can they speak, cough or breathe at all?",
+      "requires_facts": [
+        "choking_signs",
+        "responsive"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "responsive",
+            "op": "eq",
+            "value": "NO"
+          },
+          "to": "unresponsive-collapse",
+          "action": "ESCALATE"
+        },
+        {
+          "when": {
+            "fact": "choking_signs",
+            "op": "eq",
+            "value": "CANNOT_SPEAK_OR_COUGH"
+          },
+          "to": "back-blows",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "fact": "choking_signs",
+            "op": "eq",
+            "value": "CAN_SPEAK_OR_COUGH"
+          },
+          "to": "encourage-coughing",
+          "action": "ADVANCE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE",
+      "fact_questions": {
+        "choking_signs": "Can the person speak or cough at all?",
+        "responsive": "Is the person still able to cough or make any sound?"
+      }
+    },
+    {
+      "step_id": "encourage-coughing",
+      "order": 1,
+      "type": "ACTION",
+      "instruction": "Encourage them to keep coughing. Stay with them and call the emergency number if the coughing weakens or stops.",
+      "question": "Are they still able to cough forcefully?",
+      "requires_facts": [],
+      "transitions": [
+        {
+          "when": {
+            "fact": "choking_signs",
+            "op": "eq",
+            "value": "CAN_SPEAK_OR_COUGH"
+          },
+          "to": "encourage-coughing",
+          "action": "LOOP"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "back-blows",
+          "action": "ADVANCE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP"
+    },
+    {
+      "step_id": "back-blows",
+      "order": 2,
+      "type": "ACTION",
+      "instruction": "Lean the person forward. Give up to five sharp blows between the shoulder blades with the heel of your hand.",
+      "question": "Have you given five back blows, and did the object come out?",
+      "requires_facts": [
+        "object_expelled"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "object_expelled",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "handover",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "abdominal-thrusts",
+          "action": "ADVANCE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "abdominal-thrusts",
+      "order": 3,
+      "type": "ACTION",
+      "instruction": "Stand behind the person. Put a fist just above the navel and below the chest bone, grasp it with the other hand and pull sharply inwards and upwards. Give up to five thrusts.",
+      "question": "Have you given five abdominal thrusts, and did the object come out?",
+      "requires_facts": [
+        "object_expelled"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "object_expelled",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "handover",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "alternate-back-blows",
+          "action": "ADVANCE"
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ADVANCE"
+    },
+    {
+      "step_id": "alternate-back-blows",
+      "order": 4,
+      "type": "ACTION",
+      "instruction": "Alternate five back blows and five abdominal thrusts until the object comes out or the person becomes unresponsive.",
+      "question": "Has the object come out, or has the person become unresponsive?",
+      "requires_facts": [
+        "object_expelled",
+        "responsive"
+      ],
+      "repeat_interval_minutes": 1,
+      "transitions": [
+        {
+          "when": {
+            "fact": "object_expelled",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "handover",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "fact": "responsive",
+            "op": "eq",
+            "value": "NO"
+          },
+          "to": "unresponsive-collapse",
+          "action": "ESCALATE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": "alternate-back-blows",
+          "action": "LOOP",
+          "note": "Continue alternating until the object clears."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "LOOP",
+      "fact_questions": {
+        "object_expelled": "Has the object come out?",
+        "responsive": "Is the person still unable to breathe, speak or cough?"
+      }
+    },
+    {
+      "step_id": "unresponsive-collapse",
+      "order": 5,
+      "type": "ESCALATE",
+      "instruction": "Lower the person to the ground carefully, call the emergency number, and start chest compressions in the centre of the chest.",
+      "question": "Have you called the emergency number and started chest compressions?",
+      "requires_facts": [
+        "cpr_started"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "cpr_started",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": "handover",
+          "action": "ADVANCE"
+        },
+        {
+          "when": {
+            "always": true
+          },
+          "to": null,
+          "action": "ESCALATE",
+          "note": "Unresponsive choking casualty requires immediate professional care."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "ESCALATE"
+    },
+    {
+      "step_id": "handover",
+      "order": 6,
+      "type": "INFO",
+      "instruction": "Stay with the person and tell the ambulance crew what happened. Follow the crew's instructions from that point on.",
+      "question": "Have the ambulance crew taken over?",
+      "requires_facts": [
+        "ambulance_arrived"
+      ],
+      "transitions": [
+        {
+          "when": {
+            "fact": "ambulance_arrived",
+            "op": "eq",
+            "value": "YES"
+          },
+          "to": null,
+          "action": "COMPLETE",
+          "note": "Professional help has taken over."
+        }
+      ],
+      "completion_conditions": [],
+      "on_completion": "COMPLETE"
+    }
+  ]
+}
