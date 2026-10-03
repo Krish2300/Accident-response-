@@ -413,7 +413,32 @@ export class AnalyticsReadRepository {
       async () => {
         await this.db.learningSample.upsert({
           where: { emergencyId: input.emergencyId },
-          create: { id: `LS-${input.emergencyId}`, ...input },
+          // Both branches must name the mapped columns explicitly. Spreading
+          // `input` here passed `features`, which is not a column on the model
+          // (it is `featuresJson`), so every first-time insert failed with
+          // "Unknown argument `features`" and only the update path ever worked.
+          create: {
+            id: `LS-${input.emergencyId}`,
+            emergencyId: input.emergencyId,
+            hospitalId: input.hospitalId ?? null,
+            emergencyType: input.emergencyType,
+            severity: input.severity,
+            responseTimeMin: input.responseTimeMin ?? null,
+            dispatchTimeMin: input.dispatchTimeMin ?? null,
+            ambulanceDistanceKm: input.ambulanceDistanceKm ?? null,
+            hospitalDistanceKm: input.hospitalDistanceKm ?? null,
+            protocolUsed: input.protocolUsed ?? null,
+            protocolVersion: input.protocolVersion ?? null,
+            escalationRequired: input.escalationRequired,
+            routeDurationMin: input.routeDurationMin ?? null,
+            transportTimeMin: input.transportTimeMin ?? null,
+            totalDurationMin: input.totalDurationMin ?? null,
+            outcomeStatus: input.outcomeStatus,
+            survivalToDischarge: input.survivalToDischarge ?? null,
+            featuresJson: JSON.stringify(input.features),
+            provenance: input.provenance,
+            recordedAt: new Date(),
+          },
           update: {
             emergencyType: input.emergencyType,
             severity: input.severity,

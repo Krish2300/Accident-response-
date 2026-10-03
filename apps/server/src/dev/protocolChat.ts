@@ -15,13 +15,6 @@ import type { Module11 } from '@resus/data';
  * the HTTP layer cannot prove the HTTP layer works.
  */
 
-interface ChatRequest {
-  sessionId?: string;
-  emergencyId?: string;
-  incidentType?: string;
-  utterance?: string;
-}
-
 const INCIDENT_TYPES = [
   'CARDIAC_ARREST',
   'SEVERE_BLEEDING',

@@ -84,6 +84,8 @@ model Emergency {
   outcome           Outcome?
   learningSample    LearningSample?
   systemEvents      SystemEvent[]
+  patient           Patient?
+  notifications     Notification[]
 
   @@index([status])
   @@index([severity])
@@ -311,6 +313,7 @@ model Hospital {
   corridors      Corridor[]
   learningSamples LearningSample[]
   routes         Route[]
+  resources      HospitalResource[]
 
   @@index([status])
   @@map("hospitals")
@@ -339,12 +342,28 @@ model Route {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // --- Module 8 additions ---------------------------------------------------
+  /// Which routing provider produced this route (osrm, openrouteservice, mock).
+  provider              String   @default("mock")
+  /// False for the deterministic development provider and for great-circle
+  /// estimates. No consumer may present a non-live route as traffic-aware.
+  isLiveTraffic         Boolean  @default(false)
+  /// Traffic multiplier applied by the provider (1.0 = free flow).
+  trafficFactor         Float?
+  /// Alternatives considered but not chosen (JSON array of route summaries).
+  alternativesJson      String   @default("[]")
+  /// Why this route was selected over the alternatives (JSON object).
+  selectionReasonJson   String   @default("{}")
+  /// Number of times the route has been recalculated since generation.
+  recalculationCount    Int      @default(0)
+
   emergency Emergency     @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   hospital  Hospital?     @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
   updates   RouteUpdate[]
 
   @@index([emergencyId])
   @@index([hospitalId])
+  @@index([status])
   @@map("routes")
 }
 
@@ -378,11 +397,133 @@ model Corridor {
   releasedAt    DateTime?
   isSimulation  Boolean   @default(false)
 
+  // --- Module 9 additions ---------------------------------------------------
+  status            String   @default("REQUESTED")
+  /// SIMULATED | NOTIFY_ONLY | INTEGRATED. Never `INTEGRATED` without a real
+  /// traffic-signal or road-user integration actually being configured.
+  priorityMode      String   @default("SIMULATED")
+  /// Corridor half-width in metres. The geofence Module 9 uses to find road
+  /// users who need to be warned.
+  radiusM           Float    @default(150)
+  /// Points along the corridor centre line (JSON array of [lat,lng]).
+  geofenceJson      String   @default("[]")
+  /// Road users detected inside the geofence (JSON array of detections).
+  roadUsersJson     String   @default("[]")
+  /// Junctions where priority was requested (JSON array).
+  signalsJson       String   @default("[]")
+  /// How many times the corridor has been renegotiated.
+  renegotiationCount Int     @default(0)
+
   emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   hospital  Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
 
   @@index([isActive])
+  @@index([status])
   @@map("corridors")
+}
+
+// -----------------------------------------------------------------------------
+// Module 7 — hospital resources
+// -----------------------------------------------------------------------------
+
+/// Live availability a hospital is scored on. A `Hospital` row says what a
+/// hospital *is*; these rows say what it has *right now*, and they change
+/// independently of the hospital record.
+model HospitalResource {
+  id           String   @id
+  hospitalId   String
+  /// ICU_BED | EMERGENCY_BED | OPERATION_THEATRE | SPECIALIST | EQUIPMENT
+  resourceType String
+  /// The specific code within the type: an EQUIPMENT_CODES value, or a
+  /// specialty name such as CARDIOLOGY.
+  ///
+  /// Empty string, not null, for countable types that have no code (an ICU bed).
+  /// SQLite treats NULLs as distinct in a unique index, so a nullable column
+  /// would silently permit unlimited duplicate ICU_BED rows for one hospital and
+  /// the uniqueness guarantee below would not hold.
+  code         String   @default("")
+  total        Int      @default(0)
+  available    Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, resourceType, code])
+  @@index([hospitalId, resourceType])
+  @@map("hospital_resources")
+}
+
+// -----------------------------------------------------------------------------
+// Modules 3/4 — patient record assembled from the call
+// -----------------------------------------------------------------------------
+
+/// What the system knows about the patient. Deliberately minimal: it holds
+/// triage-relevant observations, not identity. Name, age and contact details
+/// belong in the clinical record system, not in a dispatch log.
+model Patient {
+  id           String   @id
+  emergencyId  String   @unique
+  /// Number of people affected. > 1 makes this a multi-casualty incident.
+  patientCount Int      @default(1)
+  ageGroup     String?
+  sex          String?
+  /// ALERT | RESPONSES_TO_VOICE | RESPONSES_TO_PAIN | UNRESPONSIVE | UNKNOWN
+  consciousness String?
+  /// NORMAL | LABOURED | GASPNING | AGONISTIC | NOT_BREATHING | UNKNOWN
+  breathing    String?
+  /// Free-text symptoms exactly as the caller reported them.
+  symptomsJson String   @default("[]")
+  /// Caller-reported location text, before it is resolved to coordinates.
+  locationText String?
+  /// Human-readable address, when known.
+  address      String?
+  /// Which facts are still unknown (JSON array of fact names).
+  missingFactsJson String @default("[]")
+  /// How each known fact was established: LLM, RULE or OPERATOR (JSON object).
+  factSourcesJson  String @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+
+  @@index([consciousness])
+  @@map("patients")
+}
+
+// -----------------------------------------------------------------------------
+// Module 9 — notifications
+// -----------------------------------------------------------------------------
+
+/// A notification the corridor asked to be sent. The row records intent and
+/// outcome; whether a real message left the building depends on `delivered` and
+/// on the provider recorded in `provider`.
+model Notification {
+  id            String   @id
+  emergencyId   String
+  corridorId    String?
+  /// PUSH | SMS | VOICE | WEB | IN_APP
+  channel       String
+  /// Who was told: e.g. "nearby-road-users", "hospital-ed", "operators".
+  audience      String
+  /// QUEUED | SENT | DELIVERED | FAILED | SUPPRESSED
+  status        String   @default("QUEUED")
+  provider      String   @default("mock")
+  /// False unless a real provider confirmed delivery.
+  delivered     Boolean  @default(false)
+  /// The message body, retained for audit.
+  body          String
+  /// Correlated position the notification was raised for, when relevant.
+  latitude      Float?
+  longitude     Float?
+  failureReason String?
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+
+  @@index([emergencyId])
+  @@index([status])
+  @@map("notifications")
 }
 
 // -----------------------------------------------------------------------------

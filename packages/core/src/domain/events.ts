@@ -51,6 +51,48 @@ export const SYSTEM_EVENT_TYPES = [
   // analytics
   'ANALYTICS_SNAPSHOT_CREATED',
   'LEARNING_MODEL_UPDATED',
+
+  // ---------------------------------------------------------------------------
+  // Additions for modules 1-4 and 7-9.
+  //
+  // Per docs/MODULE_DEPENDENCY_MAP.md section 11 the vocabulary is append-only:
+  // these types are new, and no existing payload shape was altered, so every
+  // producer and consumer written before them keeps working unchanged.
+  // ---------------------------------------------------------------------------
+
+  // module 1 - emergency call interface
+  'CALL_CONNECTED',
+  'CALL_DISCONNECTED',
+  'CALL_FAILED',
+
+  // module 2 - speech processing
+  'TRANSCRIPT_PARTIAL',
+  'SPEECH_SYNTHESIZED',
+
+  // module 3 - emergency NLP
+  'NLP_EXTRACTION_COMPLETED',
+  'NLP_EXTRACTION_REJECTED',
+  'FACT_EXTRACTED',
+
+  // module 4 - conversation & question engine
+  'QUESTION_REQUIRED',
+  'ANSWER_RECEIVED',
+  'CONVERSATION_TIMED_OUT',
+  'CONVERSATION_ESCALATED',
+
+  // module 7 - hospital intelligence
+  'HOSPITAL_RESOURCE_UPDATED',
+  'HOSPITAL_REJECTED',
+
+  // module 8 - route optimization
+  'ROUTE_GENERATED',
+  'ROUTE_RECALCULATED',
+  'ROUTE_FAILED',
+
+  // module 9 - emergency corridor & alerts
+  'CORRIDOR_RENEGOTIATED',
+  'CORRIDOR_RELEASED',
+  'NOTIFICATION_SENT',
 ] as const;
 
 export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
@@ -220,6 +262,187 @@ export interface EventPayloadMap {
     modelVersion: number;
     samples: number;
     outcomeStatuses: Record<string, number>;
+  };
+
+  // -- module 1 ---------------------------------------------------------------
+  CALL_CONNECTED: {
+    callSessionId: string;
+    emergencyId: string;
+    channel: string;
+    provider: string;
+    transport: string;
+    callerId?: string | null;
+    /** False when the session runs on a development provider, never on real telephony. */
+    isLiveTransport: boolean;
+  };
+  CALL_DISCONNECTED: {
+    callSessionId: string;
+    emergencyId: string;
+    durationMs: number;
+    reason: string;
+  };
+  CALL_FAILED: {
+    emergencyId: string;
+    provider: string;
+    reason: string;
+    /** What the system fell back to, if anything. */
+    fallback?: string | null;
+  };
+
+  // -- module 2 ---------------------------------------------------------------
+  TRANSCRIPT_PARTIAL: {
+    callSessionId: string;
+    emergencyId: string;
+    speaker: string;
+    text: string;
+    sequence: number;
+    provider: string;
+  };
+  SPEECH_SYNTHESIZED: {
+    callSessionId: string;
+    emergencyId: string;
+    provider: string;
+    voice: string;
+    language: string;
+    characterCount: number;
+    /**
+     * True when the spoken text was the protocol's own wording. A false value
+     * means the text passed the safety gate as an approved paraphrase.
+     */
+    verbatimProtocolText: boolean;
+  };
+
+  // -- module 3 ---------------------------------------------------------------
+  NLP_EXTRACTION_COMPLETED: {
+    emergencyId: string;
+    provider: string;
+    model: string;
+    incidentType: string;
+    severity: string;
+    confidence: number;
+    latencyMs: number;
+    degraded: boolean;
+  };
+  /**
+   * A model response that failed schema validation and was discarded.
+   * Recorded rather than swallowed: an extraction failure is an operational
+   * signal, and silently dropping it would hide a degrading provider.
+   */
+  NLP_EXTRACTION_REJECTED: {
+    emergencyId: string;
+    provider: string;
+    reason: string;
+    /** Present when the raw text is retained for diagnosis. */
+    rawExcerpt?: string | null;
+  };
+  FACT_EXTRACTED: {
+    emergencyId: string;
+    fact: string;
+    value: unknown;
+    /** `LLM` outputs are advisory; `RULE`/`OPERATOR` facts are authoritative. */
+    source: 'LLM' | 'RULE' | 'OPERATOR';
+    confidence: number;
+  };
+
+  // -- module 4 ---------------------------------------------------------------
+  QUESTION_REQUIRED: {
+    emergencyId: string;
+    questionId: string;
+    fact: string;
+    question: string;
+    attempt: number;
+    /** True when the protocol engine, not the conversation layer, chose the wording. */
+    fromProtocolCatalogue: boolean;
+  };
+  ANSWER_RECEIVED: {
+    emergencyId: string;
+    questionId: string;
+    fact: string;
+    answered: boolean;
+    /** How the answer was understood: understood, misunderstood, or silent. */
+    outcome: 'UNDERSTOOD' | 'NOT_UNDERSTOOD' | 'NO_SPEECH';
+  };
+  CONVERSATION_TIMED_OUT: {
+    emergencyId: string;
+    questionId: string | null;
+    waitedMs: number;
+    /** What the engine did after the timeout, always deterministic. */
+    nextAction: string;
+  };
+  CONVERSATION_ESCALATED: {
+    emergencyId: string;
+    reason: string;
+    /** Why the conversation engine gave up asking. */
+    trigger: 'RETRY_LIMIT' | 'SILENCE' | 'SAFETY' | 'OPERATOR';
+  };
+
+  // -- module 7 ---------------------------------------------------------------
+  HOSPITAL_RESOURCE_UPDATED: {
+    hospitalId: string;
+    resourceType: string;
+    code?: string | null;
+    total: number;
+    available: number;
+  };
+  HOSPITAL_REJECTED: {
+    emergencyId: string;
+    hospitalId: string;
+    reason: string;
+  };
+
+  // -- module 8 ---------------------------------------------------------------
+  ROUTE_GENERATED: {
+    routeId: string;
+    emergencyId: string;
+    ambulanceId: string;
+    hospitalId: string | null;
+    distanceKm: number;
+    estimatedMinutes: number;
+    provider: string;
+    /** False for the deterministic development provider. */
+    isLiveTraffic: boolean;
+  };
+  ROUTE_RECALCULATED: {
+    routeId: string;
+    emergencyId: string;
+    previousDistanceKm: number;
+    distanceKm: number;
+    previousEstimatedMinutes: number;
+    estimatedMinutes: number;
+    reason: string;
+  };
+  ROUTE_FAILED: {
+    emergencyId: string;
+    ambulanceId: string;
+    provider: string;
+    reason: string;
+    /** Whether the failure was survivable by falling back to a straight-line estimate. */
+    degradedToEstimate: boolean;
+  };
+
+  // -- module 9 ---------------------------------------------------------------
+  CORRIDOR_RENEGOTIATED: {
+    corridorId: string;
+    emergencyId: string;
+    from: string;
+    to: string;
+    reason: string;
+  };
+  CORRIDOR_RELEASED: {
+    corridorId: string;
+    emergencyId: string;
+    durationMs: number;
+    reason: string;
+  };
+  NOTIFICATION_SENT: {
+    notificationId: string;
+    emergencyId: string;
+    channel: string;
+    audience: string;
+    status: string;
+    provider: string;
+    /** False when the notification was only recorded, not actually delivered. */
+    delivered: boolean;
   };
 }
 

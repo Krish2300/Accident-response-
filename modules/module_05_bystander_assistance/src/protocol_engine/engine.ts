@@ -8,7 +8,6 @@ import {
 import { EscalationPolicy, withDerivedFacts, type Escalation } from './escalation.js';
 import { ProtocolLoader } from './protocolLoader.js';
 import {
-  conditionsMet,
   contradictedEntryConditions,
   missingFactsFor,
   selectTransition,
@@ -154,13 +153,6 @@ export class ProtocolEngine {
     const now = options.now ?? new Date();
     const facts = normaliseFacts(options.facts ?? {});
 
-    const entryContext = this.context(protocol, {
-      facts,
-      now,
-      startedAt: now,
-      completedStepIds: [],
-      repeatCount: 0,
-    });
     // Entry is refused only when known facts *contradict* the entry conditions.
     // Facts nobody has reported yet are not a contradiction: the entry step of a
     // triage protocol usually exists to establish them.

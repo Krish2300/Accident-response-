@@ -138,6 +138,82 @@ export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
 export const CALL_SESSION_STATUSES = ['ACTIVE', 'ENDED'] as const;
 export type CallSessionStatus = (typeof CALL_SESSION_STATUSES)[number];
 
+/** Module 8 — route lifecycle. */
+export const ROUTE_STATUSES = [
+  'PLANNED',
+  'ACTIVE',
+  'PAUSED',
+  'RECALCULATING',
+  'ARRIVED',
+  'ABANDONED',
+] as const;
+export type RouteStatus = (typeof ROUTE_STATUSES)[number];
+
+/** Module 9 — emergency corridor lifecycle. */
+export const CORRIDOR_STATUSES = [
+  'REQUESTED',
+  'ACTIVE',
+  'RENEGOTIATING',
+  'RELEASED',
+  'FAILED',
+] as const;
+export type CorridorStatus = (typeof CORRIDOR_STATUSES)[number];
+
+/**
+ * Module 9 — how far a corridor actually got.
+ *
+ * `SIMULATED` is the default in development because no traffic-signal or
+ * road-user integration exists yet. It is a distinct value rather than a boolean
+ * so that no consumer can read a simulated priority request as an observed one.
+ */
+export const CORRIDOR_PRIORITY_MODES = [
+  'SIMULATED',
+  'NOTIFY_ONLY',
+  'INTEGRATED',
+] as const;
+export type CorridorPriorityMode = (typeof CORRIDOR_PRIORITY_MODES)[number];
+
+export const NOTIFICATION_CHANNELS = ['PUSH', 'SMS', 'VOICE', 'WEB', 'IN_APP'] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+export const NOTIFICATION_STATUSES = [
+  'QUEUED',
+  'SENT',
+  'DELIVERED',
+  'FAILED',
+  'SUPPRESSED',
+] as const;
+export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
+
+/** Module 7 — the resource kinds a hospital's suitability is scored against. */
+export const HOSPITAL_RESOURCE_TYPES = [
+  'ICU_BED',
+  'EMERGENCY_BED',
+  'OPERATION_THEATRE',
+  'SPECIALIST',
+  'EQUIPMENT',
+] as const;
+export type HospitalResourceType = (typeof HOSPITAL_RESOURCE_TYPES)[number];
+
+export const PATIENT_CONSCIOUSNESS = [
+  'ALERT',
+  'RESPONDS_TO_VOICE',
+  'RESPONDS_TO_PAIN',
+  'UNRESPONSIVE',
+  'UNKNOWN',
+] as const;
+export type PatientConsciousness = (typeof PATIENT_CONSCIOUSNESS)[number];
+
+export const PATIENT_BREATHING = [
+  'NORMAL',
+  'LABOURED',
+  'GASPNING',
+  'AGONISTIC',
+  'NOT_BREATHING',
+  'UNKNOWN',
+] as const;
+export type PatientBreathing = (typeof PATIENT_BREATHING)[number];
+
 export const TRANSCRIPT_SPEAKERS = ['CALLER', 'SYSTEM', 'BYSTANDER', 'OPERATOR'] as const;
 export type TranscriptSpeaker = (typeof TRANSCRIPT_SPEAKERS)[number];
 

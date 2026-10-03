@@ -308,7 +308,6 @@ export class ProtocolSessionService {
       return this.toTurn(session, await this.sessions.stepsForSession(sessionId));
     }
 
-    const now = new Date();
     const { session: persisted, steps } = await this.sessions.applyTransition({
       sessionId,
       emergencyId: session.emergencyId,
@@ -316,6 +315,8 @@ export class ProtocolSessionService {
       status: 'ESCALATED',
       escalationRequired: true,
       escalationReason: reason,
+      // Deliberately not terminal: an escalated session stays open so the
+      // operator can still read the transcript and the collected facts.
       completedAt: null,
       collectedFacts: session.collectedFacts,
       events: [
