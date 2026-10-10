@@ -40,9 +40,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  outcomes          Outcome[]
-  assignments       AmbulanceAssignment[]
-  protocolSessions  ProtocolSession[]
+  outcomes           Outcome[]
+  assignments        AmbulanceAssignment[]
+  protocolSessions   ProtocolSession[]
+  assignedAmbulances Ambulance[]           @relation("AmbulanceAssignedDriver")
 
   @@index([role])
   @@map("users")
@@ -53,39 +54,39 @@ model User {
 // -----------------------------------------------------------------------------
 
 model Emergency {
-  id                   String    @id
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  status               String    @default("CREATED")
-  incidentType         String
-  severity             String
-  latitude             Float
-  longitude            Float
-  description          String?
-  callerId             String?
-  assignedAmbulanceId  String?
-  selectedHospitalId   String?
+  id                  String   @id
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  status              String   @default("CREATED")
+  incidentType        String
+  severity            String
+  latitude            Float
+  longitude           Float
+  description         String?
+  callerId            String?
+  assignedAmbulanceId String?
+  selectedHospitalId  String?
   /// Hard provenance flag. Simulation rows are never aggregated together with
   /// production rows unless the caller explicitly opts in.
-  isSimulation         Boolean   @default(false)
-  address              String?
+  isSimulation        Boolean  @default(false)
+  address             String?
 
   assignedAmbulance Ambulance?  @relation("EmergencyAssignedAmbulance", fields: [assignedAmbulanceId], references: [id], onDelete: SetNull)
   selectedHospital  Hospital?   @relation("EmergencySelectedHospital", fields: [selectedHospitalId], references: [id], onDelete: SetNull)
-  currentUnits       Ambulance[] @relation("AmbulanceCurrentEmergency")
+  currentUnits      Ambulance[] @relation("AmbulanceCurrentEmergency")
 
-  callSessions      CallSession[]
-  transcripts       Transcript[]
-  protocolSessions  ProtocolSession[]
-  assignments       AmbulanceAssignment[]
-  routes            Route[]
-  corridor          Corridor?
-  decisions         Decision[]
-  outcome           Outcome?
-  learningSample    LearningSample?
-  systemEvents      SystemEvent[]
-  patient           Patient?
-  notifications     Notification[]
+  callSessions     CallSession[]
+  transcripts      Transcript[]
+  protocolSessions ProtocolSession[]
+  assignments      AmbulanceAssignment[]
+  routes           Route[]
+  corridor         Corridor?
+  decisions        Decision[]
+  outcome          Outcome?
+  learningSample   LearningSample?
+  systemEvents     SystemEvent[]
+  patient          Patient?
+  notifications    Notification[]
 
   @@index([status])
   @@index([severity])
@@ -96,17 +97,17 @@ model Emergency {
 }
 
 model CallSession {
-  id          String    @id
-  emergencyId String
-  channel     String    @default("VOICE")
-  callerId    String?
-  status      String    @default("ACTIVE")
-  language    String    @default("en")
-  startedAt   DateTime  @default(now())
-  endedAt     DateTime?
-  isSimulation Boolean  @default(false)
+  id           String    @id
+  emergencyId  String
+  channel      String    @default("VOICE")
+  callerId     String?
+  status       String    @default("ACTIVE")
+  language     String    @default("en")
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  isSimulation Boolean   @default(false)
 
-  emergency  Emergency   @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  emergency   Emergency    @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   transcripts Transcript[]
 
   @@index([emergencyId])
@@ -115,17 +116,17 @@ model CallSession {
 }
 
 model Transcript {
-  id             String   @id
-  callSessionId  String
-  emergencyId    String
-  sequence       Int
-  speaker        String
-  text           String
-  isFinal        Boolean  @default(true)
-  intent         String?
-  confidence     Float?
-  recordedAt     DateTime @default(now())
-  isSimulation   Boolean  @default(false)
+  id            String   @id
+  callSessionId String
+  emergencyId   String
+  sequence      Int
+  speaker       String
+  text          String
+  isFinal       Boolean  @default(true)
+  intent        String?
+  confidence    Float?
+  recordedAt    DateTime @default(now())
+  isSimulation  Boolean  @default(false)
 
   callSession CallSession @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
   emergency   Emergency   @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
@@ -163,9 +164,9 @@ model ProtocolSession {
   initiatedBy        String    @default("SYSTEM")
   initiatedByUserId  String?
 
-  emergency Emergency        @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  emergency Emergency      @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   steps     ProtocolStep[]
-  user      User?           @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+  user      User?          @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([emergencyId])
   @@index([status])
@@ -195,29 +196,31 @@ model ProtocolStep {
 // -----------------------------------------------------------------------------
 
 model Ambulance {
-  id                String    @id
-  vehicleNumber     String    @unique
-  status            String    @default("AVAILABLE")
-  latitude          Float?
-  longitude         Float?
+  id                 String    @id
+  vehicleNumber      String    @unique
+  status             String    @default("AVAILABLE")
+  latitude           Float?
+  longitude          Float?
   lastLocationUpdate DateTime?
   currentEmergencyId String?
-  assignedAt        DateTime?
-  availableAt       DateTime?
+  assignedAt         DateTime?
+  availableAt        DateTime?
   /// JSON array of EQUIPMENT_CODES.
-  equipmentJson     String    @default("[]")
-  stationName       String?
-  isSimulation      Boolean   @default(false)
+  equipmentJson      String    @default("[]")
+  stationName        String?
+  isSimulation       Boolean   @default(false)
+  assignedDriverId   String?
   /// Odometer-ish counters used by the simulation harness only.
-  simulatedSpeedKmh Float?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  simulatedSpeedKmh  Float?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  currentEmergency Emergency?  @relation("AmbulanceCurrentEmergency", fields: [currentEmergencyId], references: [id], onDelete: SetNull)
-  assignedTo      Emergency[] @relation("EmergencyAssignedAmbulance")
-  crew            AmbulanceCrew[]
-  locations       AmbulanceLocation[]
-  assignments     AmbulanceAssignment[]
+  currentEmergency Emergency?            @relation("AmbulanceCurrentEmergency", fields: [currentEmergencyId], references: [id], onDelete: SetNull)
+  assignedTo       Emergency[]           @relation("EmergencyAssignedAmbulance")
+  crew             AmbulanceCrew[]
+  locations        AmbulanceLocation[]
+  assignments      AmbulanceAssignment[]
+  assignedDriver   User?                 @relation("AmbulanceAssignedDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([isSimulation, status])
@@ -226,13 +229,13 @@ model Ambulance {
 }
 
 model AmbulanceCrew {
-  id              String  @id
-  ambulanceId     String
-  name            String
-  role            String
+  id               String  @id
+  ambulanceId      String
+  name             String
+  role             String
   /// JSON array of CREW_CAPABILITIES.
-  capabilitiesJson String @default("[]")
-  isOnDuty        Boolean @default(true)
+  capabilitiesJson String  @default("[]")
+  isOnDuty         Boolean @default(true)
 
   ambulance Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
 
@@ -260,27 +263,27 @@ model AmbulanceLocation {
 }
 
 model AmbulanceAssignment {
-  id                       String   @id
+  id                       String    @id
   emergencyId              String
   ambulanceId              String
-  status                   String   @default("ASSIGNED")
-  source                   String   @default("AUTOMATIC")
+  status                   String    @default("ASSIGNED")
+  source                   String    @default("AUTOMATIC")
   distanceKm               Float
   estimatedResponseTimeMin Float
   score                    Float
   /// JSON array of human-readable match factors.
-  matchingFactorsJson      String   @default("[]")
+  matchingFactorsJson      String    @default("[]")
   /// JSON map ambulanceId -> why the candidate was rejected.
-  rejectedReasonsJson      String   @default("{}")
+  rejectedReasonsJson      String    @default("{}")
   overrideReason           String?
-  consideredCandidates     Int      @default(0)
-  decidedAt                DateTime @default(now())
-  createdAt                DateTime @default(now())
+  consideredCandidates     Int       @default(0)
+  decidedAt                DateTime  @default(now())
+  createdAt                DateTime  @default(now())
   releasedAt               DateTime?
 
-  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
-  ambulance Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
-  decidedBy User?     @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  emergency       Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  ambulance       Ambulance @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
+  decidedBy       User?     @relation(fields: [decidedByUserId], references: [id], onDelete: SetNull)
   decidedByUserId String?
 
   @@index([emergencyId])
@@ -294,68 +297,68 @@ model AmbulanceAssignment {
 // -----------------------------------------------------------------------------
 
 model Hospital {
-  id                  String   @id
-  name                String
-  latitude            Float
-  longitude           Float
-  status              String   @default("OPEN")
+  id                   String   @id
+  name                 String
+  latitude             Float
+  longitude            Float
+  status               String   @default("OPEN")
   /// JSON array of HOSPITAL_CAPABILITIES.
-  capabilitiesJson    String   @default("[]")
-  traumaLevel         Int      @default(1)
-  acceptingEmergencies Boolean @default(true)
-  address             String?
-  contactPhone        String?
-  isSimulation        Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  capabilitiesJson     String   @default("[]")
+  traumaLevel          Int      @default(1)
+  acceptingEmergencies Boolean  @default(true)
+  address              String?
+  contactPhone         String?
+  isSimulation         Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  emergencies    Emergency[] @relation("EmergencySelectedHospital")
-  corridors      Corridor[]
+  emergencies     Emergency[]        @relation("EmergencySelectedHospital")
+  corridors       Corridor[]
   learningSamples LearningSample[]
-  routes         Route[]
-  resources      HospitalResource[]
+  routes          Route[]
+  resources       HospitalResource[]
 
   @@index([status])
   @@map("hospitals")
 }
 
 model Route {
-  id            String   @id
-  emergencyId   String
-  ambulanceId   String
-  hospitalId    String?
-  originName    String   @default("INCIDENT")
-  destinationName String @default("SCENE")
-  originLat     Float
-  originLng     Float
-  destLat       Float
-  destLng       Float
-  distanceKm    Float
+  id               String    @id
+  emergencyId      String
+  ambulanceId      String
+  hospitalId       String?
+  originName       String    @default("INCIDENT")
+  destinationName  String    @default("SCENE")
+  originLat        Float
+  originLng        Float
+  destLat          Float
+  destLng          Float
+  distanceKm       Float
   /// Encoded polyline points (JSON array of [lat,lng]).
-  polylineJson  String   @default("[]")
-  progressPct   Float    @default(0)
-  status        String   @default("PLANNED")
+  polylineJson     String    @default("[]")
+  progressPct      Float     @default(0)
+  status           String    @default("PLANNED")
   estimatedMinutes Float?
-  startedAt     DateTime?
-  completedAt   DateTime?
-  isSimulation  Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  startedAt        DateTime?
+  completedAt      DateTime?
+  isSimulation     Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   // --- Module 8 additions ---------------------------------------------------
   /// Which routing provider produced this route (osrm, openrouteservice, mock).
-  provider              String   @default("mock")
+  provider            String  @default("mock")
   /// False for the deterministic development provider and for great-circle
   /// estimates. No consumer may present a non-live route as traffic-aware.
-  isLiveTraffic         Boolean  @default(false)
+  isLiveTraffic       Boolean @default(false)
   /// Traffic multiplier applied by the provider (1.0 = free flow).
-  trafficFactor         Float?
+  trafficFactor       Float?
   /// Alternatives considered but not chosen (JSON array of route summaries).
-  alternativesJson      String   @default("[]")
+  alternativesJson    String  @default("[]")
   /// Why this route was selected over the alternatives (JSON object).
-  selectionReasonJson   String   @default("{}")
+  selectionReasonJson String  @default("{}")
   /// Number of times the route has been recalculated since generation.
-  recalculationCount    Int      @default(0)
+  recalculationCount  Int     @default(0)
 
   emergency Emergency     @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   hospital  Hospital?     @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
@@ -368,14 +371,14 @@ model Route {
 }
 
 model RouteUpdate {
-  id         String   @id
-  routeId    String
+  id          String   @id
+  routeId     String
   progressPct Float
   positionLat Float?
   positionLng Float?
-  remainingKm  Float?
-  note       String?
-  recordedAt DateTime @default(now())
+  remainingKm Float?
+  note        String?
+  recordedAt  DateTime @default(now())
 
   route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
@@ -385,34 +388,34 @@ model RouteUpdate {
 
 /// A pre-negotiated "emergency corridor": ambulance-to-hospital priority lane.
 model Corridor {
-  id            String    @id
-  emergencyId   String    @unique
-  ambulanceId   String
-  hospitalId    String
-  fromLabel     String
-  toLabel       String
+  id               String    @id
+  emergencyId      String    @unique
+  ambulanceId      String
+  hospitalId       String
+  fromLabel        String
+  toLabel          String
   estimatedMinutes Float
-  isActive      Boolean   @default(true)
-  activatedAt   DateTime  @default(now())
-  releasedAt    DateTime?
-  isSimulation  Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  activatedAt      DateTime  @default(now())
+  releasedAt       DateTime?
+  isSimulation     Boolean   @default(false)
 
   // --- Module 9 additions ---------------------------------------------------
-  status            String   @default("REQUESTED")
+  status             String @default("REQUESTED")
   /// SIMULATED | NOTIFY_ONLY | INTEGRATED. Never `INTEGRATED` without a real
   /// traffic-signal or road-user integration actually being configured.
-  priorityMode      String   @default("SIMULATED")
+  priorityMode       String @default("SIMULATED")
   /// Corridor half-width in metres. The geofence Module 9 uses to find road
   /// users who need to be warned.
-  radiusM           Float    @default(150)
+  radiusM            Float  @default(150)
   /// Points along the corridor centre line (JSON array of [lat,lng]).
-  geofenceJson      String   @default("[]")
+  geofenceJson       String @default("[]")
   /// Road users detected inside the geofence (JSON array of detections).
-  roadUsersJson     String   @default("[]")
+  roadUsersJson      String @default("[]")
   /// Junctions where priority was requested (JSON array).
-  signalsJson       String   @default("[]")
+  signalsJson        String @default("[]")
   /// How many times the corridor has been renegotiated.
-  renegotiationCount Int     @default(0)
+  renegotiationCount Int    @default(0)
 
   emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   hospital  Hospital  @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
@@ -461,28 +464,28 @@ model HospitalResource {
 /// triage-relevant observations, not identity. Name, age and contact details
 /// belong in the clinical record system, not in a dispatch log.
 model Patient {
-  id           String   @id
-  emergencyId  String   @unique
+  id               String   @id
+  emergencyId      String   @unique
   /// Number of people affected. > 1 makes this a multi-casualty incident.
-  patientCount Int      @default(1)
-  ageGroup     String?
-  sex          String?
+  patientCount     Int      @default(1)
+  ageGroup         String?
+  sex              String?
   /// ALERT | RESPONSES_TO_VOICE | RESPONSES_TO_PAIN | UNRESPONSIVE | UNKNOWN
-  consciousness String?
+  consciousness    String?
   /// NORMAL | LABOURED | GASPNING | AGONISTIC | NOT_BREATHING | UNKNOWN
-  breathing    String?
+  breathing        String?
   /// Free-text symptoms exactly as the caller reported them.
-  symptomsJson String   @default("[]")
+  symptomsJson     String   @default("[]")
   /// Caller-reported location text, before it is resolved to coordinates.
-  locationText String?
+  locationText     String?
   /// Human-readable address, when known.
-  address      String?
+  address          String?
   /// Which facts are still unknown (JSON array of fact names).
-  missingFactsJson String @default("[]")
+  missingFactsJson String   @default("[]")
   /// How each known fact was established: LLM, RULE or OPERATOR (JSON object).
-  factSourcesJson  String @default("{}")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  factSourcesJson  String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
 
@@ -498,7 +501,7 @@ model Patient {
 /// outcome; whether a real message left the building depends on `delivered` and
 /// on the provider recorded in `provider`.
 model Notification {
-  id            String   @id
+  id            String    @id
   emergencyId   String
   corridorId    String?
   /// PUSH | SMS | VOICE | WEB | IN_APP
@@ -506,10 +509,10 @@ model Notification {
   /// Who was told: e.g. "nearby-road-users", "hospital-ed", "operators".
   audience      String
   /// QUEUED | SENT | DELIVERED | FAILED | SUPPRESSED
-  status        String   @default("QUEUED")
-  provider      String   @default("mock")
+  status        String    @default("QUEUED")
+  provider      String    @default("mock")
   /// False unless a real provider confirmed delivery.
-  delivered     Boolean  @default(false)
+  delivered     Boolean   @default(false)
   /// The message body, retained for audit.
   body          String
   /// Correlated position the notification was raised for, when relevant.
@@ -517,7 +520,7 @@ model Notification {
   longitude     Float?
   failureReason String?
   sentAt        DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
 
@@ -562,19 +565,19 @@ model SystemEvent {
 // -----------------------------------------------------------------------------
 
 model Decision {
-  id                   String   @id
-  emergencyId          String
-  decisionType         String
-  ambulanceId          String?
-  hospitalId           String?
+  id                    String   @id
+  emergencyId           String
+  decisionType          String
+  ambulanceId           String?
+  hospitalId            String?
   /// JSON array of the options that were evaluated.
-  optionsConsideredJson String  @default("[]")
-  chosen               String
-  reasoning            String
-  confidence           Float
-  actorType            String   @default("SYSTEM")
-  actorId              String?
-  createdAt            DateTime @default(now())
+  optionsConsideredJson String   @default("[]")
+  chosen                String
+  reasoning             String
+  confidence            Float
+  actorType             String   @default("SYSTEM")
+  actorId               String?
+  createdAt             DateTime @default(now())
 
   emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
 
@@ -584,16 +587,16 @@ model Decision {
 }
 
 model Outcome {
-  id                     String   @id
-  emergencyId            String   @unique
-  status                 String
-  provenance             String   @default("REAL_OBSERVED")
-  survivalToDischarge    Boolean?
-  notes                  String?
-  recordedAt             DateTime @default(now())
-  recordedByUserId       String?
+  id                  String   @id
+  emergencyId         String   @unique
+  status              String
+  provenance          String   @default("REAL_OBSERVED")
+  survivalToDischarge Boolean?
+  notes               String?
+  recordedAt          DateTime @default(now())
+  recordedByUserId    String?
 
-  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  emergency  Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
   recordedBy User?     @relation(fields: [recordedByUserId], references: [id], onDelete: SetNull)
 
   @@index([status])
@@ -634,13 +637,13 @@ model LearningSample {
 }
 
 model AnalyticsSnapshot {
-  id         String   @id
-  windowDays Int
+  id          String   @id
+  windowDays  Int
   /// JSON metric document.
   metricsJson String
-  provenance String  @default("STATISTICAL_ESTIMATE")
-  sampleSize Int      @default(0)
-  computedAt DateTime @default(now())
+  provenance  String   @default("STATISTICAL_ESTIMATE")
+  sampleSize  Int      @default(0)
+  computedAt  DateTime @default(now())
 
   @@index([computedAt])
   @@map("analytics_snapshots")

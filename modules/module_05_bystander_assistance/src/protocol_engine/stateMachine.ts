@@ -1,4 +1,11 @@
-import { isUnknown, type Condition, type ProtocolFacts, type ProtocolStep, type Transition } from './types.js';
+import {
+  isUnknown,
+  type Condition,
+  type Protocol,
+  type ProtocolFacts,
+  type ProtocolStep,
+  type Transition,
+} from './types.js';
 
 /**
  * Deterministic state machine.
@@ -102,12 +109,98 @@ export function conditionsMet(conditions: Condition[], context: EvaluationContex
 }
 
 /** Facts a condition depends on, recursively. */
-function referencedFacts(condition: Condition): string[] {
+export function referencedFacts(condition: Condition): string[] {
   if ('always' in condition) return [];
   if ('all' in condition) return condition.all.flatMap(referencedFacts);
   if ('any' in condition) return condition.any.flatMap(referencedFacts);
   if ('not' in condition) return referencedFacts(condition.not);
   return [condition.fact];
+}
+
+/**
+ * The complete set of facts a protocol's conditions mention.
+ *
+ * Used for reporting, not for validating values: a fact being *mentioned* says
+ * nothing about which values it may hold.
+ */
+export function protocolFacts(protocol: Protocol): Set<string> {
+  const facts = new Set<string>();
+  const walk = (condition: Condition): void => {
+    for (const fact of referencedFacts(condition)) facts.add(fact);
+  };
+  for (const condition of protocol.entry_conditions) walk(condition);
+  for (const condition of protocol.completion_conditions) walk(condition);
+  for (const rule of protocol.escalation_rules) walk(rule.when);
+  for (const step of protocol.steps) {
+    for (const transition of step.transitions) walk(transition.when);
+    for (const condition of step.completion_conditions) walk(condition);
+    for (const fact of step.requires_facts) facts.add(fact);
+  }
+  return facts;
+}
+
+export interface FactValidation {
+  accepted: ProtocolFacts;
+  rejected: Array<{ fact: string; reason: string }>;
+}
+
+/**
+ * Rejects fact values outside a closed, authoritative enumeration.
+ *
+ * `closed` must come from a declared enumeration — the extraction contract's
+ * enums are the only source in this system — and a fact absent from it is
+ * unbounded and always accepted.
+ *
+ * Why not derive the vocabulary from the protocol's own condition values, which
+ * is the obvious thing to try: it is unsound. `cpr_started eq YES` is the only
+ * condition on `cpr_started` in the cardiac-arrest catalogue, so the protocol's
+ * literals are `{YES}` — yet "NO" is a perfectly meaningful answer to "are you
+ * pushing on the chest?", and rejecting it would strand the caller on a step whose
+ * loop is capped at two repeats. Likewise `scene_safe ne YES` does not mean the
+ * allowed values are `{YES}`. A protocol states which values it tests against, not
+ * which values exist, so treating its literals as exhaustive would make the engine
+ * assert clinical meaning it was never given. Only a declared enum is exhaustive.
+ *
+ * The failure this guards against is real, though: `ne` and `not_in` evaluate to
+ * true for any *known* value the protocol did not enumerate, so a hallucinated
+ * token ("YESSS", "GASPING_AGAINS") reads as an established fact and satisfies
+ * `scene_safe ne YES` — firing the scene-safety escalation and halting the call on
+ * nonsense.
+ *
+ * A rejected value is dropped rather than repaired. Dropping leaves the fact
+ * unset, so the engine asks the caller again, which is the right outcome for a
+ * value nobody can vouch for. Repairing it would mean guessing which value was
+ * meant, and a repair table is exactly where invented clinical meaning creeps in.
+ */
+export function validateObservedFacts(
+  observed: ProtocolFacts,
+  closed: Map<string, ReadonlySet<string>>,
+): FactValidation {
+  const accepted: ProtocolFacts = {};
+  const rejected: FactValidation['rejected'] = [];
+
+  for (const [fact, value] of Object.entries(observed)) {
+    if (isUnknown(value)) {
+      // Not a rejection: "unknown" is a legitimate answer and already means "ask
+      // again". Recording it as rejected would bury the real rejects in noise.
+      continue;
+    }
+    const allowed = closed.get(fact);
+    if (allowed === undefined || typeof value !== 'string') {
+      accepted[fact] = value;
+      continue;
+    }
+    if (allowed.has(value.toUpperCase())) {
+      accepted[fact] = value;
+      continue;
+    }
+    rejected.push({
+      fact,
+      reason: `'${value}' is not a declared value for '${fact}' (allowed: ${[...allowed].join(', ')})`,
+    });
+  }
+
+  return { accepted, rejected };
 }
 
 /**

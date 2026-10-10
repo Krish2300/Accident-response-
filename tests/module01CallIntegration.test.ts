@@ -9,6 +9,7 @@ import { Module1 } from '@resus/call';
 import { RouteTable, type RouteDefinition } from '@resus/core';
 import { registerRoutes } from '../apps/server/src/http/routeAdapter.js';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { isAppError } from '@resus/core';
 
 /**
  * Module 1 integration test against the real database and the real route adapter.
@@ -79,6 +80,15 @@ beforeAll(async () => {
   const table = new RouteTable();
   module1.register(table);
   app = Fastify({ logger: false });
+  app.setErrorHandler((error, request, reply) => {
+    if (isAppError(error)) {
+      return reply
+        .status(error.statusCode)
+        .send({ error: { code: error.code, message: error.message, details: error.details ?? null } });
+    }
+    request.log.error({ err: error }, 'unhandled error');
+    return reply.status(500).send({ error: { code: 'INTERNAL_ERROR', message: 'Unexpected server error.' } });
+  });
   const registered = registerRoutes(app as never, table.routes as RouteDefinition<never>[], {
     authenticate: async () => ({ userId: 'test', role: 'ADMIN', email: 'test@local' }),
   });

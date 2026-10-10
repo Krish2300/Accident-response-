@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@resus/core': r('packages/core/src/index.ts'),
       '@resus/call': r('modules/module_01_emergency_call/src/index.ts'),
+      '@resus/speech': r('modules/module_02_speech_processing/src/index.ts'),
       '@resus/protocols': r('modules/module_05_bystander_assistance/src/index.ts'),
       '@resus/fleet': r('modules/module_06_ambulance_management/src/index.ts'),
       '@resus/data': r('modules/module_11_database_event_system/src/index.ts'),

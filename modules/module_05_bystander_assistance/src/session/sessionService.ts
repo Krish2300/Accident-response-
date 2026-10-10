@@ -32,10 +32,21 @@ import {
   type ProtocolStepRecord,
 } from '@resus/core';
 import { ProtocolEngine, type EngineAction, type EngineState, type EngineTurnResult } from '../protocol_engine/engine.js';
-import { UNKNOWN, type ProtocolFacts } from '../protocol_engine/types.js';
-import type { LlmGateway } from '../llm/llmService.js';
+import { UNKNOWN, type ProtocolDecision, type ProtocolFacts } from '../protocol_engine/types.js';
+import { validateTurnInput } from '../protocol_engine/validators.js';
+import type { LlmGateway, ResolvedLlm } from '../llm/llmService.js';
 import type { Entities, Extraction } from '../llm/contracts.js';
 import { assertSafeRephrasing } from '../llm/safety.js';
+
+/**
+ * Confidence a language model must report before its facts may move a protocol.
+ *
+ * Not a clinical threshold — it is a "would a model that unsure be believed about
+ * someone's breathing" threshold, and it is configurable because the right value
+ * depends on the model and the noise conditions. Anything below it means the
+ * protocol asks again; the clarification limit bounds how long.
+ */
+export const MIN_TRUSTED_CONFIDENCE = 0.6;
 
 export interface SessionTurn {
   session: ProtocolSession;
@@ -64,6 +75,15 @@ export interface SessionTurn {
   progressPct: number;
   /** Populated when a model call failed but the turn still succeeded. */
   llmNotice: string | null;
+  /**
+   * The engine's decision in structured form.
+   *
+   * `instruction` and `question` above are the same content flattened for
+   * convenience. Read this when you need to know *why* the protocol did what it
+   * did: which rule fired, which facts were accepted or rejected, and whether the
+   * facts behind the decision were trusted. Nothing in it comes from a model.
+   */
+  decision: ProtocolDecision;
 }
 
 export interface StartSessionInput {
@@ -72,7 +92,27 @@ export interface StartSessionInput {
   version?: string;
   /** Incident type used to auto-select a protocol when none is named. */
   incidentType?: string;
+  /**
+   * Facts known before the session starts.
+   *
+   * Caller-asserted, not observed, so they are untrusted by default: they may
+   * still raise an escalation, and the protocol will ask the caller to confirm
+   * them, but they cannot move the protocol forward on their own. The public HTTP
+   * route does not accept this field at all; it exists for trusted internal
+   * callers such as a dispatcher console.
+   *
+   * Anything untrusted is deliberately *not* written into the session's fact bag.
+   * Persisting it would let a later, innocuous turn quietly complete a protocol on
+   * the strength of a report nobody vouched for.
+   */
   facts?: ProtocolFacts;
+  /**
+   * Marks `facts` as established rather than asserted.
+   *
+   * Only a caller that observed them — a dispatcher console reading its own CAD
+   * record — may set this. Default false. There is no route that can set it.
+   */
+  factsTrusted?: boolean;
   startedBy?: string;
   initiatedByUserId?: string | null;
 }
@@ -80,12 +120,29 @@ export interface StartSessionInput {
 export interface HandleUtteranceInput {
   sessionId: string;
   utterance: string;
-  /** Overrides the engine's decision; reserved for human operators. */
+  /**
+   * Records an operator's reason to escalate alongside this turn.
+   *
+   * Operator-only. The public utterance route never sets it, because a bystander
+   * supplying this field would be choosing their own escalation — the operator
+   * route is `POST /api/protocol-sessions/:id/escalate`.
+   */
   forceEscalationReason?: string | null;
 }
 
 export class ProtocolSessionService {
   private readonly logger: Logger;
+  /**
+   * One in-flight turn per session.
+   *
+   * Two concurrent utterances would both read the same `currentStep`, both
+   * evaluate the same transition, and both write — so one is silently lost and the
+   * session skips a step. Serialising in the process fixes the single-process
+   * case, which is how this service is deployed. A multi-process deployment also
+   * needs a row lock or a version column in Module 11; this is the floor, not the
+   * ceiling.
+   */
+  private readonly turnLocks = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly engine: ProtocolEngine,
@@ -102,9 +159,18 @@ export class ProtocolSessionService {
     const resolved = this.resolveProtocol(input);
     const llmState = await this.probeLlm();
 
+    // Caller-asserted facts pass through the same input validation as anything
+    // else, so a malformed key or an over-long value cannot reach the fact bag.
+    const validated = validateTurnInput({ facts: input.facts ?? {} });
+    const assertedTrusted = input.factsTrusted === true;
+    const asserted = Object.keys(validated.facts).length > 0;
+
+    // Untrusted assertions are handed to the engine as *observed* facts, not as
+    // the session's own facts: they can raise an escalation, but the session
+    // starts without them.
     const engineState = this.engine.start(resolved.protocolId, {
       version: input.version ?? resolved.version,
-      facts: input.facts ?? {},
+      facts: assertedTrusted ? validated.facts : {},
     });
 
     const session = await this.sessions.createSession({
@@ -125,18 +191,26 @@ export class ProtocolSessionService {
     const identified: EngineState = { ...engineState, sessionId: session.id };
 
     const presented = this.engine.presentStep(identified);
-    const initialEscalations = this.engine.initialEscalations(identified);
+    // The start decision is a preview of the entry step, never of the step the
+    // session would move to. Asserted facts are passed as untrusted so the engine
+    // can still escalate on them; a trusted assertion is already in the state.
+    const turn = this.engine.turnDecision(identified, {
+      now: new Date(),
+      observedFacts: asserted && !assertedTrusted ? validated.facts : undefined,
+      factsTrusted: assertedTrusted,
+    });
+    const initialEscalations = turn.escalations;
+    const halted = turn.action === 'ESCALATED';
 
     // Persist the first step as ACTIVE, and escalate immediately if the very
     // first look at the facts already demands it.
-    const escalated = initialEscalations.length > 0;
     const { session: persisted, steps } = await this.sessions.applyTransition({
       sessionId: session.id,
       emergencyId: input.emergencyId,
       currentStep: identified.currentStepId,
-      status: escalated ? 'ESCALATED' : 'ACTIVE',
-      escalationRequired: escalated,
-      escalationReason: escalated ? (initialEscalations[0]?.reason ?? null) : null,
+      status: halted ? 'ESCALATED' : 'ACTIVE',
+      escalationRequired: halted,
+ escalationReason: halted ? (initialEscalations[0]?.reason ?? null) : null,
       completedAt: null,
       collectedFacts: identified.facts as Record<string, unknown>,
       degraded: !llmState.available,
@@ -152,6 +226,15 @@ export class ProtocolSessionService {
       ],
       events: [
         {
+          type: 'PROTOCOL_STARTED',
+          payload: {
+            protocolSessionId: session.id,
+            protocolId: resolved.protocolId,
+            protocolVersion: engineState.protocolVersion,
+            source: resolved.source,
+          },
+        },
+        {
           type: 'PROTOCOL_STEP_PRESENTED',
           payload: {
             protocolSessionId: session.id,
@@ -160,7 +243,7 @@ export class ProtocolSessionService {
             instruction: presented.instruction,
           },
         },
-        ...(escalated
+        ...(halted
           ? [
               {
                 type: 'PROTOCOL_ESCALATED' as const,
@@ -184,18 +267,19 @@ export class ProtocolSessionService {
       question: presented.question,
       speech: speech.speech,
       tone: speech.tone,
-      action: escalated ? 'ESCALATED' : 'HELD',
+      action: turn.action === 'HELD' ? 'HELD' : turn.action,
       status: persisted.status,
       currentStepId: persisted.currentStep,
-      requiresClarification: false,
-      clarificationQuestion: null,
+      requiresClarification: turn.requiresClarification,
+      clarificationQuestion: turn.clarificationQuestion,
       paraphrased: speech.paraphrased,
       degraded: !llmState.available,
-      escalationRequired: escalated,
+      escalationRequired: halted,
       escalations: initialEscalations.map(compactEscalation),
-      missingFacts: presented.missingFacts,
+      missingFacts: turn.missingFacts,
       progressPct: 0,
       llmNotice: speech.notice,
+      decision: turn.decision,
     };
   }
 
@@ -203,22 +287,78 @@ export class ProtocolSessionService {
    * The main loop: caller speaks, engine decides, everything is persisted.
    */
   async handleUtterance(input: HandleUtteranceInput): Promise<SessionTurn> {
+    // Bound and length-checked before anything else touches the session.
+    const validated = validateTurnInput({ utterance: input.utterance });
+    const utterance = validated.utterance;
+    if (utterance === null) {
+      throw AppError.validation('An utterance is required; the request contained no usable speech.');
+    }
+
+    return this.serialise(input.sessionId, () => this.runTurn(input, utterance));
+  }
+
+  /**
+   * Runs one turn, one session at a time.
+   *
+   * The lock is held across the read, the model call, the engine call and the
+   * write, which is the whole point: releasing it any earlier reintroduces the
+   * lost update this exists to prevent.
+   */
+  private async serialise<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
+    const previous = this.turnLocks.get(sessionId) ?? Promise.resolve();
+    // Swallow the predecessor's rejection so one failed turn does not poison the
+    // queue for every turn after it.
+    const result = previous.then(work, work);
+    this.turnLocks.set(
+      sessionId,
+      result.catch(() => undefined),
+    );
+    try {
+      return await result;
+    } finally {
+      // Only the last waiter clears the lock; clearing earlier would let a third
+      // turn start while this one is still writing.
+      if (this.turnLocks.get(sessionId) === undefined) this.turnLocks.delete(sessionId);
+      else {
+        const pending = this.turnLocks.get(sessionId);
+        if (pending) void pending.then(() => this.turnLocks.delete(sessionId));
+      }
+    }
+  }
+
+  private async runTurn(input: HandleUtteranceInput, utterance: string): Promise<SessionTurn> {
     const session = await this.requireSession(input.sessionId);
     this.assertOpen(session);
     const engineState = this.toEngineState(session);
 
     // 1. Facts, from the caller — before the engine is told anything.
-    const extraction = await this.extract(session, engineState, input.utterance);
+    const extraction = await this.extract(session, engineState, utterance);
 
     // 2. The engine decides. Everything downstream is derived from its output.
     const now = new Date();
     const advance = this.engine.advance(engineState, {
       observedFacts: factsFrom(extraction),
-      utterance: input.utterance,
+      utterance,
       now,
       forceEscalationReason: input.forceEscalationReason ?? null,
+      // An extraction the provider itself is unsure about may not move the
+      // protocol. It can still escalate and it can still ask again.
+      factsTrusted: extraction.factsTrusted,
     });
     const result = advance.result;
+
+    // The caller spoke; the operator timeline should show that, with whatever the
+    // model made of it, including the case where it made nothing.
+    const received: EngineTurnResult['events'][number] = {
+      type: 'CALLER_RESPONSE_RECEIVED',
+      payload: {
+        protocolSessionId: session.id,
+        stepId: engineState.currentStepId,
+        responseText: utterance,
+        matchedIntent: extraction.facts?.intent ?? null,
+        confidence: extraction.confidence,
+      },
+    };
 
     // 3. Persist the decision and its events in one transaction.
     const { session: persisted, steps } = await this.sessions.applyTransition({
@@ -236,7 +376,27 @@ export class ProtocolSessionService {
       }),
       degraded: extraction.degraded,
       steps: result.stepUpdates,
-      events: result.events,
+      events: [
+        received,
+        ...result.events,
+        // A provider outage is an operational event, not just a log line: an
+        // incident timeline that cannot show the model was down cannot explain a
+        // clarification the caller had to answer three times.
+        ...(extraction.failureReason
+          ? [
+              {
+                type: 'LLM_CALL_FAILED' as const,
+                payload: {
+                  protocolSessionId: session.id,
+                  provider: extraction.provider,
+                  model: extraction.model,
+                  reason: extraction.failureReason,
+                  degraded: true,
+                },
+              },
+            ]
+          : []),
+      ],
     });
 
     // 4. Only now may the wording be paraphrased for speech.
@@ -273,6 +433,7 @@ export class ProtocolSessionService {
       missingFacts: result.missingFacts,
       progressPct: result.progressPct,
       llmNotice: extraction.notice ?? speech.notice,
+      decision: result.decision,
     };
   }
 
@@ -408,11 +569,16 @@ export class ProtocolSessionService {
     engineState: EngineState,
     utterance: string,
   ): Promise<{
-    facts: Entities | null;
+    facts: (Entities & { intent?: Extraction['intent'] }) | null;
     degraded: boolean;
     provider: string;
     model: string;
     notice: string | null;
+    /** Set when the call failed outright, for the LLM_CALL_FAILED event. */
+    failureReason: string | null;
+    confidence: number | null;
+    /** Whether the engine may act on what came back. */
+    factsTrusted: boolean;
   }> {
     try {
       const resolved = await this.llm.resolve();
@@ -421,14 +587,19 @@ export class ProtocolSessionService {
         currentStepQuestion: this.currentQuestion(engineState),
         protocolId: session.protocolId,
       });
+      const facts = { ...extraction.entities, intent: extraction.intent };
+      const factsTrusted = this.trustExtraction(resolved, extraction);
       return {
-        facts: extraction.entities,
+        facts,
         degraded: resolved.degraded,
         provider: resolved.service.providerName,
         model: resolved.service.model,
         notice: resolved.degraded
           ? `Language model unavailable; using the deterministic keyword fallback. Extraction is degraded.`
           : null,
+        failureReason: resolved.degraded ? (resolved.reason ?? 'primary provider unavailable') : null,
+        confidence: extraction.confidence,
+        factsTrusted,
       };
     } catch (error) {
       this.logger.warn(
@@ -441,8 +612,35 @@ export class ProtocolSessionService {
         provider: 'none',
         model: 'none',
         notice: 'Could not understand that automatically, so the assistant will ask again.',
+        failureReason: (error as Error).message,
+        confidence: null,
+        // Nothing was extracted, so nothing is being asserted. The engine's own
+        // missing-fact check decides what to ask; there is no claim to distrust.
+        factsTrusted: true,
       };
     }
+  }
+
+  /**
+   * Decides whether an extraction is entitled to move the protocol.
+   *
+   * The asymmetry is the whole point: a fact that is wrong in the cautious
+   * direction costs the caller one more question, while a fact that is wrong in
+   * the confident direction has them start chest compressions on someone breathing
+   * normally. So a language model's output has to clear a confidence bar and must
+   * not be self-flagged as needing clarification.
+   *
+   * The deterministic fallback is treated as trusted even though it reports a low
+   * confidence, because it is not a guess: it is a fixed keyword matcher whose
+   * failure modes are the documented ones, it caps its own confidence rather than
+   * claiming certainty, and it already forces `requires_clarification`. Judging it
+   * by the confidence number would make every offline session stall on the first
+   * turn, which would remove the safety net rather than tighten it.
+   */
+  private trustExtraction(resolved: ResolvedLlm, extraction: Extraction): boolean {
+    if (resolved.service.providerName === 'heuristic-fallback') return true;
+    if (extraction.requires_clarification) return false;
+    return extraction.confidence >= MIN_TRUSTED_CONFIDENCE;
   }
 
   private async speak(
@@ -564,6 +762,11 @@ export class ProtocolSessionService {
       missingFacts: [],
       progressPct: 0,
       llmNotice: null,
+      decision: this.engine.turnDecision(this.toEngineState(session), {
+        // Operator-driven transitions carry no model output, so nothing in them is
+        // model-sourced.
+        factsTrusted: true,
+      }).decision,
     };
   }
 }
@@ -580,7 +783,9 @@ interface LlmState {
  * Only values that are actually known are forwarded. `UNKNOWN` is dropped so
  * the engine asks, instead of evaluating a condition against a guess.
  */
-export function factsFrom(extraction: { facts: Entities | null }): ProtocolFacts {
+export function factsFrom(extraction: {
+  facts: (Entities & { intent?: string }) | null;
+}): ProtocolFacts {
   if (!extraction.facts) return {};
   const facts: ProtocolFacts = {};
   for (const [key, value] of Object.entries(extraction.facts)) {

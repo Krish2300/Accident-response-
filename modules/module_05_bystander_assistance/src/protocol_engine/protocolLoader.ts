@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { AppError, ErrorCode, createConsoleLogger } from '@resus/core';
+import { AppError, ErrorCode } from '@resus/core';
 import {
   type Protocol,
   type ProtocolSummary,
@@ -19,16 +19,22 @@ const DEFAULT_PROTOCOL_DIR = resolve(moduleDir, 'protocols');
  *  - validates every file against `protocolSchema` at load time,
  *  - refuses to serve a protocol whose `review_status` is missing,
  *  - keeps the source and version attached to every served protocol,
- *  - supports loading several versions side by side.
+ *  - supports loading several versions side by side,
+ *  - rejects two files claiming the same `protocol_id@version`, because which one
+ *    won would otherwise depend on directory iteration order.
+ *
+ * It fails closed, unconditionally. A catalogue that contains any error serves
+ * nothing at all. There is deliberately no "load the good ones anyway" mode: a
+ * bystander being walked through a cardiac-arrest protocol must not be subject to
+ * whether the process happened to start with a partial directory listing.
  */
 export class ProtocolLoader {
   private readonly cache = new Map<string, Protocol>();
+  /** Which file supplied each cached protocol, so duplicates can name both sides. */
+  private readonly sourceFiles = new Map<string, string>();
   private loadError: string | null = null;
 
-  constructor(
-    private readonly directory: string = DEFAULT_PROTOCOL_DIR,
-    private readonly strict = true,
-  ) {}
+  constructor(private readonly directory: string = DEFAULT_PROTOCOL_DIR) {}
 
   get protocolDir(): string {
     return this.directory;
@@ -83,14 +89,31 @@ export class ProtocolLoader {
       }
 
       const protocol = parsed.data;
+      const key = cacheKey(protocol.protocol_id, protocol.version);
+
+      // Two files claiming the same protocol_id@version is a deployment error, not
+      // a race: without this check the winner is whichever the filesystem lists
+      // first, so a stray copy could silently shadow a reviewed protocol.
+      const previousFile = this.sourceFiles.get(key);
+      if (previousFile !== undefined) {
+        problems.push(
+          `${basename(file)}: duplicate ${key}; already defined by ${previousFile}`,
+        );
+        continue;
+      }
+
       const structural = validateGraph(protocol);
       problems.push(...structural.map((issue) => `${basename(file)}: ${issue}`));
 
-      this.cache.set(cacheKey(protocol.protocol_id, protocol.version), protocol);
+      this.sourceFiles.set(key, basename(file));
+      this.cache.set(key, protocol);
     }
 
+    this.sourceFiles.clear();
+
     this.loadError = problems.length > 0 ? problems.join(' | ') : null;
-    if (problems.length > 0 && this.strict) {
+    if (problems.length > 0) {
+      // Fail closed. Nothing is served from a catalogue with a known error.
       this.cache.clear();
       throw new AppError(
         ErrorCode.PROTOCOL_CATALOGUE_INVALID,
@@ -98,9 +121,6 @@ export class ProtocolLoader {
         500,
         { problems },
       );
-    }
-    if (problems.length > 0) {
-      createConsoleLogger('warn', 'module_05.protocols').warn({ problems }, 'protocol catalogue has problems');
     }
     return [...this.cache.values()];
   }
@@ -171,9 +191,10 @@ function cacheKey(protocolId: string, version: string): string {
   return `${protocolId}@${version}`;
 }
 
+/** Files are visited in a stable order so duplicate-definition errors are reproducible. */
 function collectJsonFiles(dir: string): string[] {
   const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
+  for (const entry of readdirSync(dir).sort()) {
     const full = join(dir, entry);
     const stats = statSync(full);
     if (stats.isDirectory()) {
@@ -185,7 +206,16 @@ function collectJsonFiles(dir: string): string[] {
   return out;
 }
 
-/** Graph integrity: every transition target must exist and entry_step must resolve. */
+/**
+ * Graph integrity: every transition target must exist and entry_step must resolve.
+ *
+ * Errors here are load-blocking, never warnings. A transition pointing at a
+ * step that does not exist throws at runtime inside `requireStep`, which means a
+ * bystander mid-call; catching it at load time turns a crash during an emergency
+ * into a refusal to start. Reachability and CRITICAL-without-escalation-step are
+ * deliberately *not* checked here: both are reported by `protocols:validate` as
+ * warnings, because the remedy is clinical authoring, not a code fix.
+ */
 function validateGraph(protocol: Protocol): string[] {
   const issues: string[] = [];
   const stepIds = new Set(protocol.steps.map((s) => s.step_id));
@@ -195,6 +225,20 @@ function validateGraph(protocol: Protocol): string[] {
   }
   if (stepIds.size !== protocol.steps.length) {
     issues.push('duplicate step_id values detected');
+  }
+  const ruleIds = new Set<string>();
+  for (const rule of protocol.escalation_rules) {
+    if (ruleIds.has(rule.rule_id)) {
+      issues.push(`duplicate escalation rule_id '${rule.rule_id}'`);
+    }
+    ruleIds.add(rule.rule_id);
+    // A CRITICAL rule that names a step which does not exist is a data error: at
+    // runtime the engine cannot present the wording the rule depends on.
+    if (rule.escalation_step && !stepIds.has(rule.escalation_step)) {
+      issues.push(
+        `escalation rule '${rule.rule_id}' names escalation_step '${rule.escalation_step}', which does not exist`,
+      );
+    }
   }
   for (const step of protocol.steps) {
     for (const transition of step.transitions) {
@@ -208,7 +252,7 @@ function validateGraph(protocol: Protocol): string[] {
     if (!moves) {
       issues.push(`step '${step.step_id}' has no way forward`);
     }
-  }
+    }
   return issues;
 }
 

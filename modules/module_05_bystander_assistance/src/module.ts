@@ -2,7 +2,7 @@ import { RouteTable, noopLogger, type Logger, type ProtocolSessionPort, type Rou
 import { loadModule5Config, type Module5Config } from './config.js';
 import { createModule5Routes } from './api/routes.js';
 import { LlmGateway, createDefaultRegistry } from './llm/llmService.js';
-import type { LLMService } from './llm/contracts.js';
+import { closedFactValues, type LLMService } from './llm/contracts.js';
 import { ProtocolLoader } from './protocol_engine/protocolLoader.js';
 import { ProtocolEngine } from './protocol_engine/engine.js';
 import { ProtocolSessionService } from './session/sessionService.js';
@@ -46,6 +46,7 @@ export class Module5 {
       this.loader,
       undefined,
       this.config.clarificationLimit,
+      closedFactValues(),
     );
     const registry = createDefaultRegistry(this.config.llm, deps.providers ?? []);
     this.llm = new LlmGateway(registry, this.config.llm, this.logger);

@@ -11,7 +11,10 @@ import {
 } from '@resus/core';
 import { createModule11, getPrismaClient } from '@resus/data';
 import { Module1 } from '@resus/call';
+import { Module2 } from '@resus/speech';
 import { Module5 } from '@resus/protocols';
+import { Module6 } from '@resus/fleet';
+import { Module12 } from '@resus/analytics';
 import { loadServerConfig, type ServerConfig } from './config.js';
 import { registerDevHarness } from './dev/protocolChat.js';
 import { AuthService, registerAuthRoutes } from './http/auth.js';
@@ -30,7 +33,10 @@ export interface BuiltServer {
   fastify: FastifyInstance;
   module11: ReturnType<typeof createModule11>;
   module1: Module1;
+  module2: Module2;
   module5: Module5;
+  module6: Module6;
+  module12: Module12;
   realtime: RealtimeHub;
   logger: Logger;
   shutdown: () => Promise<void>;
@@ -66,6 +72,31 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
     logger,
   });
 
+  // Module 2 reuses Module 11's call repository so a transcript can only be
+  // written against a session that genuinely exists.
+  const module2 = new Module2({
+    calls: module11.calls,
+    events: module11.eventPublisher,
+    logger,
+  });
+
+  // Module 6 owns the ambulance fleet and is the only writer of GPS positions.
+  // It persists through Module 11's repositories, so a phone reporting its
+  // position takes exactly the same path as any other client.
+  const module6 = new Module6({
+    ambulances: module11.ambulances,
+    events: module11.eventPublisher,
+    logger,
+  });
+
+  // Module 12 is read-only: it sees Module 6's writes purely through Module 11's
+  // projection repository and the event log.
+  const module12 = new Module12({
+    analyticsRead: module11.analyticsRead,
+    events: module11.eventQuery,
+    logger,
+  });
+
   await fastify.register(jwt, { secret: config.jwtSecret });
   const auth = new AuthService(
     module11.users,
@@ -85,6 +116,9 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
   table.addAll(module11.routeDefinitions());
   module5.register(table);
   module1.register(table);
+  module2.register(table);
+  module6.register(table);
+  module12.register(table);
   const registered = registerRoutes(fastify as never, table.routes as RouteDefinition<any>[], {
     authenticate: async (request) => auth.authenticate(request as never),
   });
@@ -112,6 +146,20 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
   }));
 
   await fastify.register(websocket);
+
+  /**
+   * Raw binary bodies, kept as a Buffer.
+   *
+   * Module 2 posts caller audio rather than JSON. Fastify's default behaviour for
+   * an unknown content type is 415, so without this parser the audio routes are
+   * unreachable: the body has to be buffered untouched for the speech provider,
+   * never parsed as JSON or coerced to a string.
+   */
+  fastify.addContentTypeParser(
+    ['application/octet-stream', 'audio/wav', 'audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/*'],
+    { parseAs: 'buffer' },
+    (_request, body, done) => done(null, body),
+  );
 
   // Mounted last, and never in production: the harness must not shadow or
   // outlive a real route.
@@ -158,5 +206,5 @@ export async function buildServer(config: ServerConfig = loadServerConfig()): Pr
     await module11.dispose();
   };
 
-  return { fastify, module11, module1, module5, realtime, logger, shutdown };
+  return { fastify, module11, module1, module2, module5, module6, module12, realtime, logger, shutdown };
 }

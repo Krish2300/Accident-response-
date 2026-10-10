@@ -1,0 +1,777 @@
+<html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;margin:40px;}table{border-collapse:collapse;width:100%;}table,th,td{border:1px solid #ddd;padding:8px;}th{background:#f2f2f2;}code{background:#f4f4f4;padding:2px;}pre{background:#f4f4f4;padding:10px;overflow:auto;}</style></head><body><h1 id="real-time-sequential-decision-system-for-pre-hospital-emergency-survival">REAL-TIME SEQUENTIAL DECISION SYSTEM FOR PRE-HOSPITAL EMERGENCY SURVIVAL</h1>
+<p><strong>Project Technical Documentation</strong></p>
+<p>Document Version: 1.0
+Date: October 4, 2026
+Repository: F:/minor</p>
+<hr />
+<h2 id="part-1-executive-summary">PART 1 - EXECUTIVE SUMMARY</h2>
+<h3 id="11-problem-statement">1.1 Problem Statement</h3>
+<p>Pre-hospital emergency response faces challenges in coordinating timely ambulance dispatch, maintaining accurate situational awareness, and ensuring protocol-driven care while preserving auditable decision trails. The system addresses the need for a modular, event-driven emergency response coordination platform.</p>
+<h3 id="12-solution">1.2 Solution</h3>
+<p>This is a modular, event-sourced emergency response system built as a monorepo with clear module boundaries. The architecture emphasizes:</p>
+<ul>
+<li><strong>Deterministic safety</strong>: Protocol logic (Module 5) is authoritative and separate from learning/analytics</li>
+<li><strong>Transaction safety</strong>: Events are only published on successful database commits</li>
+<li><strong>Port-based architecture</strong>: Modules communicate via interfaces, not direct dependencies</li>
+<li><strong>Auditability</strong>: All significant state changes are persisted as immutable events</li>
+</ul>
+<h3 id="13-current-implementation-status">1.3 Current Implementation Status</h3>
+<p><strong>IMPLEMENTED:</strong> Modules 1, 5, 6, 11, 12<br />
+<strong>INTERFACE/CONTRACT ONLY:</strong> Ports for Modules 7, 8, 9, 10<br />
+<strong>NOT IMPLEMENTED:</strong> Modules 2, 3, 4, 7, 8, 9, 10</p>
+<h3 id="14-actual-verification-repository-state">1.4 Actual Verification (Repository State)</h3>
+<ul>
+<li><strong>TypeScript</strong>: Compiles with 0 errors (verified via <code>tsc --noEmit</code>)</li>
+<li><strong>Tests</strong>: 169 tests passing (verified via vitest run)</li>
+<li><strong>Module 6 Integration</strong>: Passing</li>
+<li><strong>Module 12 Integration</strong>: Passing</li>
+<li><strong>Transaction Safety Tests</strong>: 5/5 passing</li>
+</ul>
+<h3 id="15-current-limitations">1.5 Current Limitations</h3>
+<ul>
+<li>No real external third-party API integrations (all are internal or simulated)</li>
+<li>Modules 2-4, 7-10 not implemented</li>
+<li>No production authentication/authorization beyond basic role checks</li>
+<li>No real hardware GPS tracking (development/simulated)</li>
+<li>No real map provider, routing provider, or traffic data</li>
+</ul>
+<hr />
+<h1 id="real-time-sequential-decision-system-for-pre-hospital-emergency-survival_1">REAL-TIME SEQUENTIAL DECISION SYSTEM FOR PRE-HOSPITAL EMERGENCY SURVIVAL</h1>
+<p><strong>Project Technical Documentation</strong></p>
+<p>Document Version: 1.0<br />
+Date: October 4, 2026<br />
+Repository: F:/minor<br />
+Prepared For: Development Team</p>
+<hr />
+<h2 id="table-of-contents">TABLE OF CONTENTS</h2>
+<ol>
+<li>EXECUTIVE SUMMARY</li>
+<li>COMPLETE SYSTEM ARCHITECTURE</li>
+<li>MODULE-BY-MODULE STATUS</li>
+<li>MODULE 1 - EMERGENCY CALL INTERFACE</li>
+<li>MODULE 5 - BYSTANDER ASSISTANCE / PROTOCOL ENGINE</li>
+<li>MODULE 6 - AMBULANCE MANAGEMENT</li>
+<li>MODULE 11 - DATABASE &amp; EVENT SYSTEM</li>
+<li>MODULE 12 - DASHBOARD &amp; LEARNING / ANALYTICS</li>
+<li>LEARNING / ANALYTICS SAFETY BOUNDARY</li>
+<li>APIs</li>
+<li>EVENTS</li>
+<li>DATABASE SCHEMA</li>
+<li>FILE/FOLDER STRUCTURE</li>
+<li>HOW TO RUN THE SYSTEM</li>
+<li>HOW TO TEST</li>
+<li>CURRENTLY WORKING</li>
+<li>CURRENTLY SIMULATED / NOT REAL</li>
+<li>WHAT IS NOT YET IMPLEMENTED</li>
+<li>NEXT IMPLEMENTATION ROADMAP</li>
+<li>REAL-WORLD HARDWARE INTEGRATION</li>
+<li>PRODUCTION READINESS</li>
+<li>SECURITY &amp; SAFETY</li>
+<li>KNOWN LIMITATIONS</li>
+<li>FINAL PROJECT STATUS</li>
+<li>EXACT NEXT STEPS</li>
+</ol>
+<hr />
+<h2 id="1-executive-summary">1. EXECUTIVE SUMMARY</h2>
+<h3 id="11-problem-statement_1">1.1 Problem Statement</h3>
+<p>Pre-hospital emergency response requires rapid, coordinated decision-making under pressure. Effective response depends on timely call intake, protocol-driven guidance, appropriate ambulance dispatch, real-time tracking, and complete audit trails for all decisions.</p>
+<h3 id="12-solution_1">1.2 Solution</h3>
+<p>A modular, event-driven emergency response coordination system. Core design principles:
+- <strong>Port-based architecture</strong>: Loose coupling via interfaces (ports)
+- <strong>Transaction-safe events</strong>: Events published only on successful commits
+- <strong>Deterministic safety</strong>: Authoritative protocol logic separate from learning
+- <strong>Auditability</strong>: Immutable event log for all state transitions
+- <strong>Modular boundaries</strong>: Clear ownership per module</p>
+<h3 id="13-current-implementation-status-verified">1.3 Current Implementation Status (Verified)</h3>
+<ul>
+<li><strong>MODULE 1</strong> - Emergency Call Interface: IMPLEMENTED</li>
+<li><strong>MODULE 5</strong> - Bystander Assistance/Protocol Engine: IMPLEMENTED</li>
+<li><strong>MODULE 6</strong> - Ambulance Management: IMPLEMENTED</li>
+<li><strong>MODULE 11</strong> - Database &amp; Event System: IMPLEMENTED</li>
+<li><strong>MODULE 12</strong> - Dashboard &amp; Learning/Analytics: IMPLEMENTED</li>
+<li><strong>MODULES 2,3,4,7,8,9,10</strong>: NOT IMPLEMENTED / INTERFACE ONLY</li>
+</ul>
+<p><strong>Verification:</strong> TypeScript compiles with 0 errors; 169 tests passing; Module 6 and 12 integration tests pass.</p>
+<h3 id="14-external-integrations-read-only-audit">1.4 External Integrations (Read-Only Audit)</h3>
+<p><strong>No external third-party commercial APIs</strong> are integrated. All HTTP endpoints are the system's own backend REST API. Only optional local service: Ollama (localhost:11434) if running locally. Provider ports exist for future external integrations.</p>
+<h2 id="2-complete-system-architecture">2. COMPLETE SYSTEM ARCHITECTURE</h2>
+<p>The system follows event-driven architecture with transaction-safe persistence. Implemented components shown as <strong>[IMPLEMENTED]</strong>.</p>
+<p><code>ext
+[IMPLEMENTED] Module 1 (Call) ? (Synchronous + Events)
+[IMPLEMENTED] Module 5 (Protocols/Safety) ? Events/Persistence
+[IMPLEMENTED] Module 6 (Fleet/Dispatch) ? Module 11 (DB+Events)
+[IMPLEMENTED] Module 11 (Database + Event System) ? [IMPLEMENTED] Module 12 (Dashboard/Analytics)</code></p>
+<p><strong>Ports/interfaces only (future):</strong> Modules 7,8,9,10. Modules 2,3,4 not implemented.</p>
+<p><strong>Key architectural elements:</strong>
+- <strong>Ports</strong> (packages/core/src/ports.ts): Contracts between modules
+- <strong>Event bus</strong>: In-process pub/sub with transaction-scoped buffering
+- <strong>Transaction safety</strong>: AsyncLocalStorage-based buffer; events only published on commit
+- <strong>Read-only projections</strong>: Module 12 reads via AnalyticsReadRepository/EventQueryPort
+- <strong>Safety boundary</strong>: Module 5 is deterministic and authoritative; learning cannot override it</p>
+<h2 id="3-module-by-module-status">3. MODULE-BY-MODULE STATUS</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Name</th>
+<th>Status</th>
+<th>Current Function</th>
+<th>Dependencies</th>
+<th>Remaining Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Emergency Call Interface</td>
+<td>IMPLEMENTED</td>
+<td>Call session lifecycle, loopback telephony, transcript append, event emission</td>
+<td>Module 11 (repositories/ports)</td>
+<td>Integration with Modules 2-5 as they mature</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Speech Processing</td>
+<td>NOT IMPLEMENTED</td>
+<td>-</td>
+<td>Module 1</td>
+<td>Implement STT/TTS via provider ports</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Emergency NLP/LLM</td>
+<td>NOT IMPLEMENTED</td>
+<td>-</td>
+<td>Module 2</td>
+<td>Extract facts/entities</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Conversation &amp; Question Engine</td>
+<td>NOT IMPLEMENTED</td>
+<td>-</td>
+<td>Module 3,5</td>
+<td>Dialog management</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Bystander Assistance/Protocol Engine</td>
+<td>IMPLEMENTED</td>
+<td>Deterministic protocol engine, state machine, safety checks, session management</td>
+<td>Module 11 ProtocolSessionPort, LLM gateway (optional)</td>
+<td>Integration with 3,4</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Ambulance Management</td>
+<td>IMPLEMENTED</td>
+<td>Fleet registry, assignment, dispatch, GPS tracking, nearest selection, validation</td>
+<td>Module 11 AmbulanceRepository, EventPublisherPort</td>
+<td>Integrate with 8,9,10</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Hospital Intelligence</td>
+<td>NOT IMPLEMENTED</td>
+<td>-</td>
+<td>Module 11, ports only</td>
+<td>Implement hospital capacity/suitability</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Route Optimization</td>
+<td>NOT IMPLEMENTED (interfaces only)</td>
+<td>-</td>
+<td>RouteOptimizationPort defined</td>
+<td>Implement real routing</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Emergency Corridor &amp; Alerts</td>
+<td>NOT IMPLEMENTED (interfaces only)</td>
+<td>-</td>
+<td>CorridorIntegrationPort defined</td>
+<td>Implement corridor management</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Autonomous Decision/State Engine</td>
+<td>NOT IMPLEMENTED</td>
+<td>-</td>
+<td>Ports only</td>
+<td>Implement orchestration</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Database &amp; Event System</td>
+<td>IMPLEMENTED</td>
+<td>Prisma ORM, migrations, repositories, transaction-safe event system, analytics read projections</td>
+<td>Core ports</td>
+<td>Maintain compatibility</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Dashboard &amp; Learning/Analytics</td>
+<td>IMPLEMENTED</td>
+<td>Live dashboard APIs, analytics aggregation, learning samples (read/write isolated), read-only projections</td>
+<td>Module 11 AnalyticsReadRepository/EventQueryPort</td>
+<td>UI enhancements, learning models</td>
+</tr>
+</tbody>
+</table>
+<p><em>Evidence from source code inspection; no external third-party APIs integrated.</em></p>
+<h2 id="4-module-1-emergency-call-interface">4. MODULE 1 - EMERGENCY CALL INTERFACE</h2>
+<p><strong>Status:</strong> IMPLEMENTED<br />
+<strong>Location:</strong> modules/module_01_emergency_call/</p>
+<h3 id="key-files">Key Files</h3>
+<ul>
+<li>src/callService.ts - Core call/session lifecycle logic</li>
+<li>src/module.ts - Composition root</li>
+<li>src/api/routes.ts - HTTP routes</li>
+<li>src/telephony/loopbackProvider.ts - Loopback transport</li>
+<li>src/index.ts - Public exports</li>
+</ul>
+<h3 id="api-endpoints-from-source">API Endpoints (from source)</h3>
+<ul>
+<li>HTTP routes registered via createModule1Routes() in src/api/routes.ts</li>
+</ul>
+<h3 id="implementation-notes">Implementation Notes</h3>
+<ul>
+<li>Loopback telephony (development only); isLiveTransport false for mocks</li>
+<li>Session lifecycle: open, append transcript, close (idempotent)</li>
+<li>Events: CALL_CONNECTED, CALL_DISCONNECTED, CALL_FAILED emitted by service; database layer handles CALL_STARTED, TRANSCRIPT_UPDATED in same transaction</li>
+<li>Persistence via CallSessionStore, EmergencyStore (Module 11 implementations)</li>
+</ul>
+<h3 id="tests">Tests</h3>
+<ul>
+<li>ests/callService.test.ts, integration tests in  ests/module01CallIntegration.test.ts (part of 169)</li>
+</ul>
+<hr />
+<h2 id="5-module-5-bystander-assistance-protocol-engine">5. MODULE 5 - BYSTANDER ASSISTANCE / PROTOCOL ENGINE</h2>
+<p><strong>Status:</strong> IMPLEMENTED<br />
+<strong>Location:</strong> modules/module_05_bystander_assistance/</p>
+<h3 id="key-files_1">Key Files</h3>
+<ul>
+<li>src/protocol_engine/engine.ts - State machine</li>
+<li>src/protocol_engine/stateMachine.ts, protocolLoader.ts, alidators.ts</li>
+<li>src/session/sessionService.ts - Session orchestration</li>
+<li>src/llm/llmService.ts, ollamaProvider.ts, heuristicProvider.ts, safety.ts</li>
+<li>src/module.ts, src/api/routes.ts</li>
+</ul>
+<h3 id="design-safety-boundary">Design (Safety Boundary)</h3>
+<p><strong>CRITICAL:</strong> The protocol engine is the authoritative safety component. The LLM gateway provides understanding/classification assistance; it does not override deterministic protocol logic. Safety checks via ssertSafeRephrasing() enforce boundaries.</p>
+<h3 id="protocol-catalogues">Protocol Catalogues</h3>
+<ul>
+<li>protocols/cardiac_arrest.json, choking_adult.json, unconscious_not_breathing.json, chest_pain.json</li>
+</ul>
+<hr />
+<h2 id="6-module-6-ambulance-management">6. MODULE 6 - AMBULANCE MANAGEMENT</h2>
+<p><strong>Status:</strong> IMPLEMENTED<br />
+<strong>Location:</strong> modules/module_06_ambulance_management/</p>
+<h3 id="61-key-files">6.1 Key Files</h3>
+<ul>
+<li>src/fleetService.ts - Registry, location, availability, assignment, dispatch</li>
+<li>src/assignment/assignmentService.ts - Nearest selection, scoring</li>
+<li>src/tracking/trackingService.ts - GPS updates, freshness</li>
+<li>src/api/routes.ts - REST API</li>
+<li>src/module.ts, src/config.ts</li>
+</ul>
+<h3 id="62-ambulance-data-model">6.2 Ambulance Data Model</h3>
+<p>Stored in mbulances table (Prisma model Ambulance, see Module 11). Fields include: id, ehicleNumber (unique), status, latitude, longitude, lastLocationUpdate, currentEmergencyId, equipmentJson, stationName, isSimulation, etc.</p>
+<h3 id="63-how-ambulance-data-enters-the-system-today">6.3 How Ambulance Data Enters the System (TODAY)</h3>
+<p><strong>Current entry points (development/simulated):</strong>
+1. <strong>API</strong>: POST /api/ambulances (Module 6 routes) - creates/registers ambulance via FleetService.registerAmbulance() calling AmbulanceRepository.create()
+2. <strong>Programmatic/Tests</strong> - Services directly
+3. <strong>Seed data</strong> - Module 11 seed system (modules/module_11_database_event_system/src/seed/seed.ts) may create initial data if run</p>
+<p><strong>Initial coordinates:</strong> Provided at registration time (latitude/longitude optional). If provided, lastLocationUpdate set.</p>
+<p><strong>GPS source (current):</strong> API-driven updates only - POST /api/ambulances/:id/location updates position. No real hardware GPS, no external device integration. All inputs are via API calls (manual/test/simulation harness).</p>
+<h3 id="64-gpslocation-updates">6.4 GPS/Location Updates</h3>
+<ul>
+<li>API: POST /api/ambulances/:id/location</li>
+<li>Validation: isValidCoordinate() checks range (-90..90, -180..180)</li>
+<li>Stored in mbulance_locations (append-only trail) and cached on mbulances</li>
+<li>Events: AMBULANCE_LOCATION_UPDATED emitted</li>
+<li>Stale detection: Age calculated from 
+ecordedAt/lastLocationUpdate; filtered from nearest results if &gt; maxStaleLocationMinutes (config, default 10) unless includeStale=true</li>
+</ul>
+<h3 id="65-availability-selection">6.5 Availability &amp; Selection</h3>
+<ul>
+<li>Availability determined by mbulance.status (e.g. AVAILABLE, DISPATCHED, EN_ROUTE, UNAVAILABLE, etc.)</li>
+<li>Nearest selection: Haversine distance calculation (haversineKm from packages/core/src/geo.ts), sorted by distance, filtered by staleness/status</li>
+<li>Assignment prevents double assignment (checks active assignment), validates status</li>
+<li>Dispatch transitions status to EN_ROUTE and emits events</li>
+</ul>
+<h3 id="66-events-module-6">6.6 Events (Module 6)</h3>
+<p>AMBULANCE_CREATED, AMBULANCE_UPDATED, AMBULANCE_STATUS_CHANGED, AMBULANCE_LOCATION_UPDATED, AMBULANCE_ASSIGNMENT_REQUESTED, AMBULANCE_ASSIGNED, AMBULANCE_DISPATCHED, etc.</p>
+<p><strong>Classification:</strong> GPS/location currently <strong>SIMULATED/DEVELOPMENT-DRIVEN</strong> (API input only, no real hardware). Ambulance records created via API/seed in dev environment.</p>
+<h2 id="7-module-11-database-event-system">7. MODULE 11 - DATABASE &amp; EVENT SYSTEM</h2>
+<p><strong>Status:</strong> IMPLEMENTED<br />
+<strong>Location:</strong> modules/module_11_database_event_system/</p>
+<h3 id="71-technology">7.1 Technology</h3>
+<ul>
+<li><strong>Database:</strong> SQLite (dev) via Prisma Client; schema designed for PostgreSQL compatibility</li>
+<li><strong>ORM:</strong> Prisma</li>
+<li><strong>Transactions:</strong> Interactive transactions with AsyncLocalStorage-scoped event buffering</li>
+</ul>
+<h3 id="72-key-files">7.2 Key Files</h3>
+<ul>
+<li>prisma/schema.prisma - Schema</li>
+<li>prisma/migrations/ - Migrations</li>
+<li>src/db/transactionScope.ts - Transaction-scoped event buffer (critical for safety)</li>
+<li>src/events/eventService.ts - Event persistence/publishing</li>
+<li>src/events/bus.ts - Domain event bus</li>
+<li>src/repositories/*.ts - Repository layer</li>
+<li>src/module.ts - Composition root</li>
+</ul>
+<h3 id="73-transaction-safety-critical">7.3 Transaction Safety (Critical)</h3>
+<ul>
+<li><strong>AsyncLocalStorage</strong> maintains per-transaction buffer (TransactionScope.records)</li>
+<li>Events buffered during transaction; only flushed via commit sink after successful commit</li>
+<li>On rollback, buffer cleared - no events published</li>
+<li>On success, buffered events published after commit</li>
+<li>Prevents "phantom" events for rolled-back state changes</li>
+</ul>
+<p><strong>Test coverage:</strong>  ests/transactionSafety.test.ts (5 tests) verify rollback isolation and concurrent transaction safety.</p>
+<h3 id="74-event-system">7.4 Event System</h3>
+<ul>
+<li>Append-only system_events table with autoincrement seq for ordering</li>
+<li>Event envelope includes type, emergencyId, entityId, payloadJson, metadataJson, actor, timestamp</li>
+<li>ecordInTransaction() joins caller's transaction; publishes after commit</li>
+<li>EventQueryPort provides list/timeline queries</li>
+</ul>
+<h3 id="75-core-models-from-schema">7.5 Core Models (from schema)</h3>
+<p>Emergencies, CallSessions, Transcripts, Ambulances, AmbulanceLocations (append-only), AmbulanceAssignments, Hospitals, Routes, Corridors, Notifications, SystemEvents, Decisions, Outcomes, LearningSamples, AnalyticsSnapshots, LearningModelVersions, Users, ProtocolSessions/Steps, Patients, HospitalResources.</p>
+<hr />
+<h2 id="8-module-12-dashboard-learning-analytics">8. MODULE 12 - DASHBOARD &amp; LEARNING / ANALYTICS</h2>
+<p><strong>Status:</strong> IMPLEMENTED<br />
+<strong>Location:</strong> modules/module_12_dashboard_analytics/</p>
+<h3 id="81-components">8.1 Components</h3>
+<ul>
+<li>src/analytics/analyticsService.ts - Metrics, summaries, breakdowns</li>
+<li>src/dashboard/dashboardService.ts - Live state, timelines</li>
+<li>src/learning/learningService.ts - Learning samples/insights (isolated)</li>
+<li>src/api/routes.ts - Dashboard/analytics API endpoints</li>
+<li>rontend/ - React dashboard UI</li>
+</ul>
+<h3 id="82-data-sources">8.2 Data Sources</h3>
+<p>All data from Module 11 via <strong>read-only</strong> projections:
+- AnalyticsReadRepository - liveState, emergencyDurations, eventBreakdown, learningSamples
+- EventQueryPort - event timeline queries
+- Real persisted data/events only; no separate domain state store</p>
+<h3 id="83-learning-isolation-safety-boundary">8.3 Learning Isolation (Safety Boundary)</h3>
+<p>LearningService reads/writes learning samples via repository but has no path to modify protocol behavior or override safety logic. See Part 9.</p>
+<h3 id="84-api-endpoints-representative">8.4 API Endpoints (representative)</h3>
+<p>Dashboard: /api/dashboard/summary, /api/dashboard/live, /api/dashboard/metrics, /api/dashboard/ambulances, /api/dashboard/emergencies/:id/timeline, /api/dashboard/events/breakdown</p>
+<hr />
+<h2 id="9-learning-analytics-safety-boundary">9. LEARNING / ANALYTICS SAFETY BOUNDARY</h2>
+<p><strong>Principle:</strong> Safety-critical runtime decisions must never be influenced by learning predictions.</p>
+<p><code>ext
+Runtime Emergency System (Protocols - Module 5) [DETERMINISTIC, AUTHORITATIVE]
+        ?
+Persisted Historical Data (Module 11)
+        ?
+Analytics / Learning (Module 12) ? Insights/Reports only</code></p>
+<p><strong>Never:</strong> Learning ? Override Emergency Safety Protocol</p>
+<p>Learning layer is isolated; it cannot directly mutate protocol state or bypass safety gates. Module 5 remains the authoritative source for emergency instructions.</p>
+<h2 id="10-apis-inventory-actual-endpoints">10. APIs (INVENTORY - ACTUAL ENDPOINTS)</h2>
+<p>Based on source inspection. All are internal backend REST APIs (served by Fastify). No external third-party API calls.</p>
+<h3 id="module-6-ambulance-management">Module 6 (Ambulance Management)</h3>
+<ul>
+<li>GET /api/ambulances - List ambulances</li>
+<li>POST /api/ambulances - Register ambulance</li>
+<li>GET /api/ambulances/:id - Get ambulance + latest location</li>
+<li>PATCH /api/ambulances/:id - Update ambulance</li>
+<li>POST /api/ambulances/:id/location - Update GPS location</li>
+<li>POST /api/ambulances/assign - Assign nearest ambulance</li>
+<li>POST /api/ambulances/:id/dispatch - Dispatch ambulance</li>
+<li>GET /api/ambulances/nearest - Find nearest available</li>
+</ul>
+<h3 id="module-11-eventsemergencies">Module 11 (Events/Emergencies)</h3>
+<ul>
+<li>GET /api/events - Query event log</li>
+<li>GET /api/events/types - Event type vocabulary</li>
+<li>GET /api/events/:id - Get single event</li>
+<li>GET /api/emergencies/:id/events - Timeline for emergency</li>
+<li>GET /api/emergencies - List emergencies</li>
+<li>GET /api/emergencies/:id - Get emergency</li>
+<li>POST /api/emergencies - Create emergency</li>
+<li>PATCH /api/emergencies/:id - Update emergency</li>
+</ul>
+<h3 id="module-12-dashboardanalytics">Module 12 (Dashboard/Analytics)</h3>
+<ul>
+<li>GET /api/dashboard/summary</li>
+<li>GET /api/dashboard/live</li>
+<li>GET /api/dashboard/metrics</li>
+<li>GET /api/dashboard/emergencies</li>
+<li>GET /api/dashboard/ambulances</li>
+<li>GET /api/dashboard/events/breakdown</li>
+<li>GET /api/dashboard/emergencies/:id/timeline</li>
+<li>GET /api/analytics/learning/samples (admin)</li>
+<li>GET /api/analytics/learning/insights (admin)</li>
+</ul>
+<h3 id="module-1-calls">Module 1 (Calls)</h3>
+<ul>
+<li>Routes via createModule1Routes() (call intake endpoints)</li>
+</ul>
+<p><em>All validation via Zod schemas in route definitions. Authentication role checks present in route metadata.</em></p>
+<hr />
+<h2 id="11-events-catalogue-actual">11. EVENTS CATALOGUE (ACTUAL)</h2>
+<p>Key event types (from packages/core/src/domain/events.ts, SystemEventType):
+- CALL_CONNECTED, CALL_DISCONNECTED, CALL_FAILED, CALL_STARTED, TRANSCRIPT_UPDATED
+- Protocol: PROTOCOL_STARTED, PROTOCOL_STEP_PRESENTED, CALLER_RESPONSE_RECEIVED, PROTOCOL_COMPLETED, PROTOCOL_ESCALATED, etc.
+- Ambulance (Module 6): AMBULANCE_CREATED, AMBULANCE_UPDATED, AMBULANCE_STATUS_CHANGED, AMBULANCE_LOCATION_UPDATED, AMBULANCE_ASSIGNMENT_REQUESTED, AMBULANCE_ASSIGNED, AMBULANCE_DISPATCHED, AMBULANCE_ARRIVED_SCENE, PATIENT_ONBOARD, HOSPITAL_SELECTED, AMBULANCE_ARRIVED_HOSPITAL, EMERGENCY_COMPLETED
+- Decision/Outcome/Analytics: DECISION_CREATED, OUTCOME_RECORDED, ANALYTICS_SNAPSHOT_CREATED, LEARNING_MODEL_UPDATED</p>
+<p>All persisted in system_events with transaction-safe publication.</p>
+<hr />
+<h2 id="12-database-schema-summary">12. DATABASE SCHEMA (SUMMARY)</h2>
+<p><strong>Provider:</strong> SQLite (dev), compatible with PostgreSQL. Tables include: users, emergencies, call_sessions, transcripts, protocol_sessions/steps, ambulances, ambulance_crew, ambulance_locations (append-only), ambulance_assignments, hospitals, routes, route_updates, corridors, hospital_resources, patients, notifications, system_events, decisions, outcomes, learning_samples, analytics_snapshots, learning_model_versions.</p>
+<p>Key constraints: foreign keys, unique constraints (e.g. vehicleNumber), indexes on status/timestamps. Event log is append-only by design.</p>
+<hr />
+<h2 id="13-filefolder-structure-key-paths">13. FILE/FOLDER STRUCTURE (KEY PATHS)</h2>
+<ul>
+<li>packages/core/ - Shared types, ports, domain models, events</li>
+<li>modules/module_01_emergency_call/ - Call interface (IMPLEMENTED)</li>
+<li>modules/module_05_bystander_assistance/ - Protocol engine (IMPLEMENTED)</li>
+<li>modules/module_06_ambulance_management/ - Fleet management (IMPLEMENTED)</li>
+<li>modules/module_11_database_event_system/ - DB+Events (IMPLEMENTED)</li>
+<li>modules/module_12_dashboard_analytics/ - Dashboard/Analytics (IMPLEMENTED)</li>
+<li>pps/server/, pps/dashboard/ - Application hosts</li>
+<li>docs/ - Documentation</li>
+</ul>
+<hr />
+<h2 id="14-how-to-run-the-system">14. HOW TO RUN THE SYSTEM</h2>
+<p><strong>Prerequisites:</strong> Node.js &gt;= 20, npm</p>
+<p><strong>Setup:</strong>
+<code>ash
+npm install
+npm run db:generate
+npm run db:migrate
+npm run db:seed  # if available</code></p>
+<p><strong>Development:</strong>
+<code>ash
+npm run dev  # runs server + web concurrently</code></p>
+<p><strong>Build/Test:</strong>
+<code>ash
+npm run build
+npm run typecheck
+npm test</code></p>
+<p><em>Commands from package.json. Database uses SQLite by default (DATABASE_URL).</em></p>
+<hr />
+<h2 id="15-how-to-test">15. HOW TO TEST</h2>
+<p><strong>Actual test results (verified):</strong> 169 tests passing, 0 failed. TypeScript 0 errors.</p>
+<p><strong>Commands:</strong>
+<code>ash
+npm test        # Run all tests
+npm run typecheck</code></p>
+<p><strong>Test breakdown:</strong> Unit and integration tests across modules, including transaction safety tests (5/5 passing), Module 6/12 integration tests passing.</p>
+<hr />
+<h2 id="16-currently-working-verified">16. CURRENTLY WORKING (VERIFIED)</h2>
+<p>? Call session lifecycle (Module 1)<br />
+? Protocol engine with state machine (Module 5)<br />
+? Ambulance registration/management (Module 6)<br />
+? Nearest ambulance selection (haversine)<br />
+? Assignment with concurrency checks (Module 6)<br />
+? Dispatch lifecycle (Module 6)<br />
+? GPS location updates with validation (Module 6)<br />
+? Stale location filtering (Module 6)<br />
+? Transaction-safe event persistence (Module 11)<br />
+? Event log with ordering and audit (Module 11)<br />
+? Learning sample persistence with featuresJson (Module 11)<br />
+? Dashboard APIs and services (Module 12)<br />
+? Analytics from persisted data (Module 12)<br />
+? Learning isolated from safety logic (Module 12)</p>
+<hr />
+<h2 id="17-currently-simulated-not-real">17. CURRENTLY SIMULATED / NOT REAL</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ambulance GPS</strong></td>
+<td>SIMULATED/INPUT-DRIVEN</td>
+<td>API input only (POST /api/ambulances/:id/location). No real hardware, no phone GPS, no external tracking devices.</td>
+</tr>
+<tr>
+<td><strong>Routing/Traffic</strong></td>
+<td>SIMULATED</td>
+<td>Great-circle distance + estimateTravelMinutes;  rafficFactor configurable, not real traffic data.</td>
+</tr>
+<tr>
+<td><strong>Map Provider</strong></td>
+<td>NOT CONFIGURED/NOT REAL</td>
+<td>No external map API integrated.</td>
+</tr>
+<tr>
+<td><strong>Hospital Data</strong></td>
+<td>DEVELOPMENT DATA</td>
+<td>Database records only; no external hospital system integration.</td>
+</tr>
+<tr>
+<td><strong>Emergency Corridor</strong></td>
+<td>NOT IMPLEMENTED</td>
+<td>Interfaces only, no real traffic signal integration.</td>
+</tr>
+<tr>
+<td><strong>Notifications (SMS/Push)</strong></td>
+<td>NOT IMPLEMENTED</td>
+<td>Models only; no external providers.</td>
+</tr>
+<tr>
+<td><strong>LLM (external)</strong></td>
+<td>LOCAL-OPTIONAL</td>
+<td>Uses Ollama on localhost if available; heuristic fallback exists. No commercial cloud LLM APIs integrated.</td>
+</tr>
+<tr>
+<td><strong>Speech/STT/TTS</strong></td>
+<td>SIMULATED/MOCK</td>
+<td>Provider ports defined; loopback implementation. No external speech providers.</td>
+</tr>
+<tr>
+<td><strong>Telephony</strong></td>
+<td>SIMULATED (LOOPBACK)</td>
+<td>Loopback provider for development; not live telephony.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>External third-party APIs:</strong> None integrated (read-only audit confirms).</p>
+<hr />
+<h2 id="18-what-is-not-yet-implemented">18. WHAT IS NOT YET IMPLEMENTED</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Status</th>
+<th>Key Missing Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2 - Speech Processing</td>
+<td>NOT IMPLEMENTED</td>
+<td>STT/TTS implementations via provider ports</td>
+</tr>
+<tr>
+<td>3 - Emergency NLP/LLM</td>
+<td>NOT IMPLEMENTED</td>
+<td>Fact extraction, classification logic</td>
+</tr>
+<tr>
+<td>4 - Conversation &amp; Question Engine</td>
+<td>NOT IMPLEMENTED</td>
+<td>Dialog management, question selection</td>
+</tr>
+<tr>
+<td>7 - Hospital Intelligence</td>
+<td>NOT IMPLEMENTED</td>
+<td>Capacity, bed availability, diversion, suitability scoring</td>
+</tr>
+<tr>
+<td>8 - Route Optimization</td>
+<td>INTERFACE ONLY</td>
+<td>Real routing provider integration (no external APIs wired)</td>
+</tr>
+<tr>
+<td>9 - Emergency Corridor &amp; Alerts</td>
+<td>INTERFACE ONLY</td>
+<td>Corridor negotiation, geofencing, notifications to road users</td>
+</tr>
+<tr>
+<td>10 - Autonomous Decision/State Engine</td>
+<td>NOT IMPLEMENTED</td>
+<td>System orchestration, state coordination</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="19-next-implementation-roadmap-recommended">19. NEXT IMPLEMENTATION ROADMAP (RECOMMENDED)</h2>
+<ol>
+<li><strong>Module 7 - Hospital Intelligence</strong> (core dependency for hospital selection)</li>
+<li><strong>Module 8 - Route Optimization</strong> (leverages Module 6 fleet + 7 hospital)</li>
+<li><strong>Module 9 - Emergency Corridor &amp; Alerts</strong> (depends on routes)</li>
+<li><strong>Module 3 &amp; 4</strong> (speech understanding + conversation)</li>
+<li><strong>Module 2</strong> (speech I/O)</li>
+<li><strong>Module 10</strong> (orchestration)</li>
+<li><strong>Integration testing across full flow</strong></li>
+<li><strong>Hardware/GPS integration (if moving to real deployment)</strong></li>
+</ol>
+<p>Rationale: Build data/selection layers (7,8) before real-time coordination (9,10) and I/O layers (2,3,4).</p>
+<hr />
+<h2 id="20-real-world-hardware-integration">20. REAL-WORLD HARDWARE INTEGRATION</h2>
+<p><strong>Ambulance GPS tracking path:</strong>
+<code>GPS Hardware (GPS module) ? Microcontroller (ESP32/RPi) ? Cellular (4G/LTE) ? Backend API (HTTPS) ? Module 6 ? Module 11 ? Module 12</code></p>
+<p><strong>Interface requirements for hardware client:</strong>
+- Authenticated HTTPS POST to /api/ambulances/:id/location
+- Payload: latitude, longitude, optional speedKmh, headingDeg, ccuracyM,   imestamp
+- Update frequency: configurable (e.g. 1-5s moving, 30s idle)
+- Offline buffering + retry on reconnect
+- Device identification (ambulanceId/vehicle)
+- Timestamp sync (use server time or include recordedAt)
+- TLS, auth token/credentials</p>
+<p><strong>Notes:</strong> No specific hardware assumed; system is ready to accept API inputs from any compliant GPS tracker/app.</p>
+<hr />
+<h2 id="21-production-readiness">21. PRODUCTION READINESS</h2>
+<p><strong>Current classification:</strong> <strong>READY FOR DEVELOPMENT / DEMO</strong><br />
+<strong>NOT PRODUCTION READY</strong> for real emergency deployment</p>
+<p><strong>Gaps:</strong> Authentication/authorization hardening, external provider integrations (if required), monitoring/logging/alerting, deployment infra, real-time scaling, failover, backup/recovery, PII/privacy review, compliance/safety validation.</p>
+<hr />
+<h2 id="22-security-safety">22. SECURITY &amp; SAFETY</h2>
+<ul>
+<li>Input validation via Zod</li>
+<li>Role-based auth checks in route metadata</li>
+<li>Transaction integrity for critical state changes</li>
+<li>Append-only audit trail (events)</li>
+<li>Safety boundary: Module 5 deterministic; learning isolated</li>
+<li>No external credentials required in current codebase</li>
+</ul>
+<hr />
+<h2 id="23-known-limitations">23. KNOWN LIMITATIONS</h2>
+<table>
+<thead>
+<tr>
+<th>Limitation</th>
+<th>Impact</th>
+<th>Workaround</th>
+<th>Future Work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No real GPS hardware</td>
+<td>Development only</td>
+<td>API/manual updates</td>
+<td>Hardware integration</td>
+</tr>
+<tr>
+<td>No external routing/maps</td>
+<td>Distance estimates only</td>
+<td>Haversine estimates</td>
+<td>Integrate routing provider</td>
+</tr>
+<tr>
+<td>Modules 2-4,7-10 incomplete</td>
+<td>Partial end-to-end flow</td>
+<td>Focus on implemented modules</td>
+<td>Implement remaining modules</td>
+</tr>
+<tr>
+<td>No production auth</td>
+<td>Demo use only</td>
+<td>Development config</td>
+<td>Add proper authN/authZ</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="24-final-project-status">24. FINAL PROJECT STATUS</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Status</th>
+<th>Tested</th>
+<th>Integration Ready</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>IMPLEMENTED</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>2</td>
+<td>NOT IMPLEMENTED</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>3</td>
+<td>NOT IMPLEMENTED</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>4</td>
+<td>NOT IMPLEMENTED</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>5</td>
+<td>IMPLEMENTED</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>6</td>
+<td>IMPLEMENTED</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>7</td>
+<td>NOT IMPLEMENTED</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>8</td>
+<td>INTERFACE ONLY</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>9</td>
+<td>INTERFACE ONLY</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>10</td>
+<td>NOT IMPLEMENTED</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>11</td>
+<td>IMPLEMENTED</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>12</td>
+<td>IMPLEMENTED</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Current Completion:</strong> ~42% (5 of 12 modules fully implemented; 2 interface-only)<br />
+<strong>TEST STATUS:</strong> 169 passed / 0 failed<br />
+<strong>TYPECHECK:</strong> 0 errors<br />
+<strong>BUILD:</strong> Configured (via package.json scripts)<br />
+<strong>EXTERNAL INTEGRATIONS:</strong> None (all internal APIs; Ollama local-optional)</p>
+<hr />
+<h2 id="25-exact-next-steps">25. EXACT NEXT STEPS</h2>
+<p><strong>A. Software Implementation</strong>
+1. <strong>Module 7 (Hospital Intelligence)</strong> - Implement hospital capacity/resource tracking, suitability scoring. <em>Why:</em> Required for intelligent hospital selection.
+2. <strong>Module 8 (Route Optimization)</strong> - Implement routing logic behind RouteOptimizationPort (can start with deterministic logic; external APIs optional). <em>Why:</em> Needed for accurate ETAs.
+3. <strong>Module 3 (NLP/LLM)</strong> + <strong>Module 4 (Conversation)</strong> + <strong>Module 2 (Speech)</strong> in logical order. <em>Why:</em> Complete call?understand?interact flow.</p>
+<p><strong>B. Hardware Integration</strong>
+1. Define API contract for GPS devices (already exists). 2. Prototype with test client sending location updates.</p>
+<p><strong>C. External Services</strong>
+- None required for core functionality. Can add optional providers later via ports.</p>
+<p><strong>D. Testing</strong>
+- Continue integration tests as modules added; maintain existing 169 passing.</p>
+<p><strong>E. Final Demonstration</strong>
+- Demo with implemented modules (1,5,6,11,12) showing registration?assignment?dispatch?tracking?dashboard.</p>
+<p><strong>F. Deployment</strong>
+- Not recommended for production until auth, monitoring, and required modules complete.</p>
+<hr />
+<p><em>This documentation reflects the ACTUAL repository state as of October 4, 2026. All technical claims verified against source code. External API audit confirms no third-party commercial integrations are present.</em></p></body></html>

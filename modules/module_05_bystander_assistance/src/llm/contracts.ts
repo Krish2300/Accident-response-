@@ -12,10 +12,27 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 export const TRISTATE = ['YES', 'NO', 'UNKNOWN'] as const;
+/**
+ * Values of `breathing_status`.
+ *
+ * `AGHASTIC` is present because the protocol catalogue uses it: the ERC adult BLS
+ * source transcribes agonal breathing as its own value, and `cardiac-arrest-adult`
+ * and `active-seizure` both list it alongside `GASPNING_AGAINST` in the conditions
+ * that mean "not breathing normally". Without it here, a caller describing agonal
+ * gasps could never satisfy those conditions however they were extracted — the
+ * catalogue entry would be unreachable and the enum would be silently narrower than
+ * the authoritative content.
+ *
+ * Both values mean the same thing clinically and both are treated identically by
+ * every condition that uses them. They are kept as separate tokens because the
+ * catalogue does: a reviewer comparing the engine's behaviour against the
+ * guidance should be able to see the guidance's own term.
+ */
 export const BREATHING_STATUSES = [
   'BREATHING',
   'NOT_BREATHING',
   'GASPNING_AGAINST',
+  'AGHASTIC',
   'UNKNOWN',
 ] as const;
 export const CONSCIOUSNESS = ['ALERT', 'CONFUSED', 'UNRESPONSIVE', 'UNKNOWN'] as const;
@@ -76,6 +93,42 @@ export const extractionSchema = z.object({
   evidence: z.string().max(300).nullable().default(null),
 });
 export type Extraction = z.infer<typeof extractionSchema>;
+
+/**
+ * The closed value sets this module declares for individual facts.
+ *
+ * This is the only place in Module 5 where a fact's full set of legal values is
+ * known, so it is also the only sound source of an exhaustive vocabulary. The
+ * protocol catalogue cannot supply one: it states which values a condition tests
+ * against, not which values exist. `scene_safe ne YES` appears in four protocols
+ * and does not mean "the only possible value is YES".
+ *
+ * The engine treats any fact absent from this map as unbounded and accepts
+ * whatever it is given, which is how `caller_location` (a caller's own words) and
+ * `cpr_started` keep working.
+ */
+export const CLOSED_FACT_VALUES: Readonly<Record<string, readonly string[]>> = {
+  responsive: TRISTATE,
+  consciousness: CONSCIOUSNESS,
+  breathing_status: BREATHING_STATUSES,
+  severe_bleeding: TRISTATE,
+  choking_signs: CHOKING_SIGNS,
+  seizure_active: TRISTATE,
+  chest_pain: TRISTATE,
+  scene_safe: TRISTATE,
+  caller_with_patient: TRISTATE,
+  age_group: AGE_GROUPS,
+};
+
+/** `CLOSED_FACT_VALUES` in the shape the engine's fact validation expects. */
+export function closedFactValues(): Map<string, ReadonlySet<string>> {
+  return new Map(
+    Object.entries(CLOSED_FACT_VALUES).map(([fact, values]) => [
+      fact,
+      new Set(values.map((value) => value.toUpperCase())),
+    ]),
+  );
+}
 
 export const classificationSchema = z.object({
   incident_type: z.enum([

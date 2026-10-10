@@ -6,7 +6,8 @@
       "@resus/core": ["packages/core/src/index.ts"],
       "@resus/core/*": ["packages/core/src/*"],
       "@resus/data": ["modules/module_11_database_event_system/src/index.ts"],
-      "@resus/protocols": ["modules/module_05_bystander_assistance/src/index.ts"],
+      "@resus/speech": ["modules/module_02_speech_processing/src/index.ts"],
+    "@resus/protocols": ["modules/module_05_bystander_assistance/src/index.ts"],
       "@resus/call": ["modules/module_01_emergency_call/src/index.ts"],
     "@resus/fleet": ["modules/module_06_ambulance_management/src/index.ts"],
       "@resus/analytics": ["modules/module_12_dashboard_analytics/src/index.ts"],
@@ -29,7 +30,8 @@
     "apps/server/src/**/*.ts",
     "apps/dashboard/src/**/*.ts",
     "apps/dashboard/src/**/*.tsx",
-    "scripts/**/*.ts",
-    "*.ts"
+"scripts/**/*.ts",
+      "tests/**/*.ts",
+      "*.ts"
   ]
 }

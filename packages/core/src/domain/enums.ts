@@ -224,6 +224,8 @@ export const USER_ROLES = [
   'OPERATOR',
   'DISPATCHER',
   'CLINICAL_SUPERVISOR',
+  'DRIVER',
+  'AMBULANCE_DRIVER',
   'ADMIN',
 ] as const;
 export type UserRole = (typeof USER_ROLES)[number];

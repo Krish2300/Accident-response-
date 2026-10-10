@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Emergency Response Simulation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono&display=swap">
+<style>
+:root{--bg:#0a1017;--p:#111a24;--l:#22323f;--t:#d5e0ea;--m:#7b8ea1;--am:#ffb020;--cy:#4cc9f0;--rd:#ff4d5e;--ok:#5ad19a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px/1.45 'IBM Plex Sans',system-ui,sans-serif;color-scheme:dark}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;border-bottom:2px solid var(--rd)}
+h1{font-size:17px;margin:0;font-weight:600}h2{font-size:13px;margin:0 0 6px;color:var(--m);font-weight:600}
+.ban{margin-left:auto;background:var(--rd);color:#fff;padding:3px 10px;font-weight:600;font-size:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;padding:8px 14px;background:var(--p);border-bottom:1px solid var(--l);align-items:center}
+button,select{background:#1a2735;color:var(--t);border:1px solid var(--l);padding:6px 11px;font:inherit;cursor:pointer;border-radius:3px}
+button:hover{border-color:var(--cy)}button:focus-visible,select:focus-visible{outline:2px solid var(--am)}
+button.go{background:var(--rd);border-color:var(--rd);color:#fff}button.on{border-color:var(--am);color:var(--am)}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);gap:10px;padding:10px 14px}
+.c{display:flex;flex-direction:column;gap:10px;min-width:0}
+.pn{background:var(--p);border:1px solid var(--l);padding:10px;border-radius:4px;overflow-x:auto}
+.am{border-color:var(--am)}.cy{border-color:var(--cy)}
+i{font-style:normal;font-size:11px;padding:1px 6px;border:1px solid var(--l);color:var(--m);margin-right:4px;white-space:nowrap}
+i.S{color:var(--am);border-color:var(--am)}i.A{color:var(--cy);border-color:var(--cy)}i.D{color:var(--ok);border-color:var(--ok)}i.X{color:var(--rd);border-color:var(--rd)}
+.msg{padding:5px 8px;margin:3px 0;border-left:3px solid var(--l)}.msg.caller{border-color:var(--rd)}.msg.ai{border-color:var(--cy)}
+pre,.mono{font:12px 'IBM Plex Mono',monospace;margin:0;white-space:pre-wrap;word-break:break-all}
+.ev{font:12px 'IBM Plex Mono',monospace;max-height:230px;overflow:auto}.ev div{padding:1px 0;border-bottom:1px solid #182430}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{text-align:left;padding:3px 6px;border-bottom:1px solid var(--l)}
+.q{padding:8px;border:1px solid var(--am);margin-top:6px}.q button{margin:4px 4px 0 0}
+.st{display:flex;flex-wrap:wrap;gap:4px}.st span{padding:2px 7px;border:1px solid var(--l);color:var(--m);font-size:12px}.st .cur{background:var(--am);color:#000;border-color:var(--am)}
+.ph{border:2px solid var(--m);border-radius:14px;padding:10px}
+.arch{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.arch div{border:1px solid var(--l);padding:8px;background:var(--p)}.arch .cur{border-color:var(--am);box-shadow:0 0 0 2px var(--am)}
+.bus{margin:10px 14px;padding:8px;border:1px dashed var(--cy);text-align:center;color:var(--cy)}
+.warn{color:var(--am);font-size:12px}svg{width:100%;height:auto;background:#0d1620;display:block}
+@media(max-width:980px){main{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:no-preference){.cur{transition:all .3s}}
+</style></head><body>
+<header><h1>Emergency control center — simulation</h1><span id="chip"></span><span class="ban">SIMULATION — NOT FOR REAL EMERGENCY USE</span></header>
+<div class="bar">
+<select id="sc" aria-label="Scenario"><option value="chest">Chest pain</option><option value="breath">Breathing emergency</option><option value="uncon">Unconscious person</option><option value="acc">Road accident</option></select>
+<button class="go" onclick="start()" title="Starts a simulated inbound call for the selected scenario">Start scenario</button>
+<button onclick="pause()" title="Switch to step mode">Pause</button>
+<button onclick="nextStep()" title="Run the next pipeline step">Next step</button>
+<button id="ab" onclick="autoPlay()" title="Run end to end, answering and declining automatically (AMB001 declines first to show failover)">Auto play</button>
+<button onclick="reset()">Reset</button>
+<span style="margin-left:auto"></span>
+<button id="v1" onclick="setView('ops')">Operations</button><button id="v2" onclick="setView('arch')">System architecture</button>
+<button id="dbg" onclick="dbg=!dbg;render()">Show internal data</button>
+</div>
+<div id="app"></div>
+<script>
+const $=q=>document.querySelector(q);
+const Q={breathing:'അദ്ദേഹത്തിന് ശ്വാസം എടുക്കാൻ ബുദ്ധിമുട്ടുണ്ടോ?',conscious:'അദ്ദേഹത്തിന് ബോധമുണ്ടോ?'};
+const AN={YES:'ഉണ്ട്',NO:'ഇല്ല',DK:'അറിയില്ല'};
+const MAP={breathing:{YES:'DIFFICULT',NO:'NORMAL',DK:'UNSURE'},conscious:{YES:'YES',NO:'NO',DK:'UNSURE'}};
+const SC={chest:{say:'എന്റെ അച്ഛന് നെഞ്ചുവേദനയാണ്',sym:['CHEST_PAIN'],pt:'FATHER',ans:{breathing:'NO',conscious:'YES'}},
+breath:{say:'അദ്ദേഹത്തിന് ശ്വാസം കിട്ടുന്നില്ല',sym:['BREATHING_DIFFICULTY'],pt:'UNKNOWN',ans:{}},
+uncon:{say:'ഒരാൾ ബോധമില്ലാതെ കിടക്കുന്നു',sym:['UNCONSCIOUS'],pt:'UNKNOWN',set:{conscious:'NO'},ans:{}},
+acc:{say:'റോഡിൽ ഒരു അപകടം നടന്നു',sym:['ROAD_ACCIDENT'],pt:'UNKNOWN',ans:{breathing:'NO',conscious:'YES'}}};
+const RULES=[[f=>f.conscious==='NO','UNRESPONSIVE_PERSON','D'],[f=>f.breathing==='DIFFICULT'||f.symptoms.includes('BREATHING_DIFFICULTY'),'BREATHING_EMERGENCY','D'],
+[f=>f.symptoms.includes('CHEST_PAIN'),'CHEST_PAIN_ASSESSMENT','A'],[f=>f.symptoms.includes('ROAD_ACCIDENT'),'ROAD_ACCIDENT_ASSESSMENT','A']];
+// Module 5: deterministic, no AI. Unknown input fails safe toward dispatch once required facts are collected.
+function protocol(f,miss){const r=RULES.find(x=>x[0](f));const rule=r?r[1]:'NO_RULE_MATCHED';
+ const go=(r&&r[2]==='D')||!miss.length;return{rule,decision:go?'EMERGENCY_DISPATCH_REQUIRED':'NEXT_REQUIRED_INFORMATION'}}
+const AMB0=[{id:'AMB001',drv:'Raj',loc:'Kottayam',km:2.4,eta:7,st:'AVAILABLE',px:{x:230,y:205}},{id:'AMB002',drv:'Anil',loc:'Changanassery',km:4.1,eta:11,st:'AVAILABLE',px:{x:430,y:250}},
+{id:'AMB003',drv:'Suresh',loc:'Pala',km:3.0,eta:9,st:'BUSY',px:{x:110,y:130}},{id:'AMB004',drv:'Biju',loc:'Ettumanoor',km:6.2,eta:15,st:'AVAILABLE',px:{x:500,y:110}}];
+const HOSP=[{id:'H1',n:'Govt Medical College Kottayam',em:'AVAILABLE',km:8.2,eta:18,px:{x:540,y:60}},{id:'H2',n:'Hospital A',em:'BUSY',km:5.1,eta:12,px:{x:70,y:250}},{id:'H3',n:'Hospital B',em:'AVAILABLE',km:11,eta:24,px:{x:90,y:55}}];
+const CALLER={x:300,y:160},REASONS=['Driver unavailable','Already occupied','Vehicle issue','Other'];
+const MODS=[[1,'Telephony intake','Exotel'],[2,'Speech STT/TTS','Malayalam STT + TTS'],[3,'Emergency NLP (untrusted)','Qwen'],[4,'Conversation engine','Own logic'],[5,'Protocol engine (authority)','Existing Module 5'],[6,'Ambulance mgmt + GPS','Driver Android phone GPS'],[7,'Hospital intelligence','Hospital capacity feed'],[8,'Routing','OSM + OSRM/ORS'],[9,'Emergency corridor','Traffic authority API'],[10,'Decision state machine','Own logic'],[11,'Database / events','PostgreSQL'],[12,'Dashboard / analytics','Own logic']];
+const M10=['CALL_RECEIVED','ASSESSING','EMERGENCY_CONFIRMED','DISPATCHING','AMBULANCE_ASSIGNED','EN_ROUTE','HOSPITAL_SELECTED','ARRIVED','COMPLETED'];
+const mk=()=>({call:null,stt:null,qwen:null,facts:{symptoms:[],patient:'UNKNOWN',conscious:'UNKNOWN',breathing:'UNKNOWN'},m4:null,proto:null,case:null,rank:[],offer:null,
+ amb:AMB0.map(a=>({...a,px:{...a.px},ex:false})),hosp:null,route:null,cor:null,m10:'IDLE',mod:0,ev:[],pending:null,sel:'AMB001'});
+let S=mk(),run=0,auto=false,nextRes=null,dbg=false,view='ops';
+const amb=id=>S.amb.find(a=>a.id===id),ll=p=>({lat:+(9.62-p.y*3e-4).toFixed(5),lng:+(76.45+p.x*3e-4).toFixed(5)});
+// ---- central event store: every state change goes through emit() ----
+function emit(type,mod,msg,fn){S.mod=mod;if(fn)fn(S);S.ev.push({ms:Date.now(),t:new Date().toLocaleTimeString('en-GB'),type,mod,msg});render()}
+async function gate(ms=800){const my=run;if(auto)await new Promise(r=>setTimeout(r,ms));else await new Promise(r=>nextRes=r);if(my!==run)throw 0}
+function decide(kind,opts,def){return new Promise(res=>{const p={kind,opts,def,res};S.pending=p;render();if(auto)setTimeout(()=>{if(S.pending===p)pick(def)},1300)})}
+function pick(v){const p=S.pending;if(p){S.pending=null;p.res(v)}}
+function pause(){auto=false;render()}function nextStep(){if(nextRes){const r=nextRes;nextRes=null;r()}}
+function autoPlay(){auto=true;nextStep();if(S.pending)pick(S.pending.def);render()}
+function reset(){run++;auto=false;nextRes=null;S=mk();render()}
+function setView(v){view=v;render()}
+async function speak(t){emit('TTS_SPEAKING',2,'AI speaks: '+t,s=>s.call.tr.push({w:'ai',t}));await gate()}
+async function turn(text,p){
+ emit('VOICE_RECEIVED',2,'Audio received (simulated telephony)',s=>{if(s.m10==='CALL_RECEIVED')s.m10='ASSESSING'});await gate();
+ emit('STT_COMPLETED',2,'STT text: '+text+' (conf 0.94)',s=>{s.stt={text,lang:'ml-IN',conf:.94};s.call.tr.push({w:'caller',t:text})});await gate();
+ emit('EMERGENCY_FACTS_EXTRACTED',3,'Qwen output validated into facts',s=>{s.qwen=p;for(const k in p)if(k!=='symptoms'&&k!=='intent')s.facts[k]=p[k];s.facts.symptoms=[...new Set([...s.facts.symptoms,...(p.symptoms||[])])]});await gate();
+ const miss=['breathing','conscious'].filter(k=>S.facts[k]==='UNKNOWN');
+ emit('MISSING_INFO_IDENTIFIED',4,miss.length?'Missing: '+miss.join(', '):'Nothing missing',s=>{s.m4={missing:miss,next:miss[0]||null}});await gate();
+ const r=protocol(S.facts,miss);emit('PROTOCOL_STATE_CHANGED',5,r.rule+' → '+r.decision,s=>{s.proto=r});await gate();return r}
+async function move(id,to,n,label){const a=amb(id),p0={...a.px};for(let i=1;i<=n;i++){emit('AMBULANCE_LOCATION_UPDATED',6,id+' GPS '+label+' '+i+'/'+n+' (simulated)',s=>{a.px={x:p0.x+(to.x-p0.x)*i/n,y:p0.y+(to.y-p0.y)*i/n}});await gate(450)}}
+async function start(){reset();const my=run,sc=SC[$('#sc').value];
+ try{emit('CALL_RECEIVED',1,'Inbound call (simulated Exotel)',s=>{s.call={id:'CALL-0001',tr:[]};s.m10='CALL_RECEIVED'});await gate();
+ let r=await turn(sc.say,{intent:'MEDICAL_EMERGENCY',symptoms:sc.sym,patient:sc.pt,severity:'UNKNOWN',...(sc.set||{})});
+ while(r.decision!=='EMERGENCY_DISPATCH_REQUIRED'){const k=S.m4.next;await speak(Q[k]);
+  const a=await decide('answer',['YES','NO','DK'],sc.ans[k]||'NO');
+  r=await turn(AN[a],{intent:'ANSWER',symptoms:[],[k]:MAP[k][a]})}
+ emit('EMERGENCY_CREATED',5,'CASE-0001 created: '+r.rule,s=>{s.case={id:'CASE-0001',type:r.rule,sev:'CRITICAL',st:'Searching for ambulance'};s.m10='EMERGENCY_CONFIRMED'});await gate();
+ await speak('ആംബുലൻസ് അയയ്ക്കുന്നു. ലൈനിൽ തുടരുക.');
+ const rank=S.amb.filter(a=>a.st==='AVAILABLE').sort((a,b)=>a.eta-b.eta);
+ emit('AMBULANCES_RANKED',6,'Ranked by ETA then distance: '+rank.map(a=>a.id+' '+a.eta+'min/'+a.km+'km').join(', '),s=>{s.rank=rank.map(a=>a.id);s.m10='DISPATCHING'});await gate();
+ let acc=null,n=0;
+ for(const id of S.rank){S.sel=id;emit('AMBULANCE_OFFERED',6,'Offer sent to '+id,s=>{amb(id).st='OFFERED';s.offer=id;s.case.st='Offered to '+id});
+  const d=await decide('offer',['ACCEPT','DECLINE'],n++===0?'DECLINE':'ACCEPT');
+  if(d==='DECLINE'){const why=await decide('reason',REASONS,'Already occupied');
+   emit('AMBULANCE_DECLINED',6,id+' declined: '+why,s=>{const a=amb(id);a.st='AVAILABLE';a.ex=true;s.offer=null});await gate();
+   emit('NEXT_CANDIDATE',6,'Selecting next candidate',null);await gate();continue}
+  acc=id;break}
+ if(!acc){emit('DISPATCH_FAILED',6,'No ambulance accepted',s=>{s.case.st='UNASSIGNED';s.offer=null});return}
+ emit('AMBULANCE_ACCEPTED',6,acc+' accepted',s=>{amb(acc).st='DISPATCHED';s.offer=null;s.m10='AMBULANCE_ASSIGNED';s.case.st=acc+' dispatched'});await gate();
+ emit('AMBULANCE_EN_ROUTE',6,acc+' navigating to scene',s=>{amb(acc).st='EN_ROUTE';s.m10='EN_ROUTE'});await gate();
+ await move(acc,CALLER,5,'to scene');
+ emit('ARRIVED_AT_SCENE',6,acc+' at scene',s=>{amb(acc).st='AT_SCENE'});await gate();
+ const h=HOSP.filter(x=>x.em==='AVAILABLE').sort((a,b)=>a.eta-b.eta)[0];
+ emit('HOSPITAL_SELECTED',7,h.n+' selected',s=>{s.hosp=h.id;s.m10='HOSPITAL_SELECTED'});await gate();
+ emit('ROUTE_CALCULATED',8,'Route '+h.km+' km, ETA '+h.eta+' min (simulated routing)',s=>{s.route={dist:h.km,eta:h.eta,traffic:'MODERATE'};amb(acc).st='TRANSPORTING'});await gate();
+ for(const[st,m]of[['REQUESTED','Corridor requested'],['COORDINATING','Coordinating junctions'],['ACTIVE','Corridor active']]){emit('CORRIDOR_'+st,9,m+' (simulated)',s=>{s.cor={st,sig:[1,2,3].map(i=>st==='ACTIVE'?'CLEAR':st==='REQUESTED'?'PENDING':i<2?'CLEARING':'PREPARE')}});await gate()}
+ await move(acc,h.px,5,'to hospital');
+ emit('ARRIVED_AT_HOSPITAL',6,acc+' at hospital',s=>{amb(acc).st='AT_HOSPITAL';s.m10='ARRIVED'});await gate();
+ emit('EMERGENCY_COMPLETED',10,'CASE-0001 completed',s=>{s.case.st='Completed';s.m10='COMPLETED';amb(acc).st='AVAILABLE';amb(acc).px={...HOSP.find(x=>x.id===h.id).px}})}
+ catch(e){if(e!==0)console.error(e)}}
+// ---- rendering (reads state only) ----
+const tg=(c,t)=>`<i class="${c}">${t}</i>`,esc=s=>String(s).replace(/</g,'&lt;');
+function an(){const E=t=>S.ev.filter(e=>e.type===t),c=E('EMERGENCY_CREATED')[0],ac=E('AMBULANCE_ACCEPTED')[0],hs=E('HOSPITAL_SELECTED')[0],of=E('AMBULANCE_OFFERED').length;
+ const sec=(a,b)=>a&&b?((a.ms-b.ms)/1000).toFixed(1)+' s':'—';
+ return[['Active calls',S.call&&S.m10!=='COMPLETED'?1:0],['Completed',E('EMERGENCY_COMPLETED').length],['Ambulances available',S.amb.filter(a=>a.st==='AVAILABLE').length],['En route / transporting',S.amb.filter(a=>['EN_ROUTE','TRANSPORTING','DISPATCHED'].includes(a.st)).length],
+ ['Response time (created→accepted)',sec(ac,c)],['Acceptance rate',of?Math.round(E('AMBULANCE_ACCEPTED').length/of*100)+'% ('+E('AMBULANCE_ACCEPTED').length+'/'+of+')':'—'],['Hospital selection time',sec(hs,c)],['Protocol decisions',E('PROTOCOL_STATE_CHANGED').length]]}
+function map(){const r=S.route&&S.hosp&&HOSP.find(h=>h.id===S.hosp),a=S.amb.find(x=>['EN_ROUTE','TRANSPORTING','AT_SCENE','DISPATCHED'].includes(x.st));
+ let g='';for(let i=0;i<=600;i+=50)g+=`<path d="M${i} 0V320M0 ${i/1.875}H600" stroke="#16222d"/>`;
+ if(a){g+=`<polyline points="${a.px.x},${a.px.y} ${CALLER.x},${CALLER.y}${r?' '+r.px.x+','+r.px.y:''}" stroke="#ffb020" stroke-dasharray="6 5" fill="none"/>`}
+ if(S.offer){const o=amb(S.offer);g+=`<circle cx="${o.px.x}" cy="${o.px.y}" r="22" fill="none" stroke="#ffb020" stroke-width="2"/>`}
+ g+=HOSP.map(h=>`<text x="${h.px.x}" y="${h.px.y}" font-size="22" text-anchor="middle">🏥</text><text x="${h.px.x}" y="${h.px.y+14}" font-size="10" fill="${h.id===S.hosp?'#5ad19a':'#7b8ea1'}" text-anchor="middle">${h.n.slice(0,16)} ${h.em}</text>`).join('');
+ g+=`<text x="${CALLER.x}" y="${CALLER.y}" font-size="24" text-anchor="middle">🚨</text><text x="${CALLER.x}" y="${CALLER.y+14}" font-size="10" fill="#ff4d5e" text-anchor="middle">Emergency</text>`;
+ g+=S.amb.map(a=>`<text x="${a.px.x}" y="${a.px.y}" font-size="22" text-anchor="middle" opacity="${a.st==='BUSY'?.4:1}">🚑</text><text x="${a.px.x}" y="${a.px.y+13}" font-size="10" fill="#d5e0ea" text-anchor="middle">${a.id} ${a.st}</text>`).join('');
+ return`<svg viewBox="0 0 600 320" role="img" aria-label="Schematic map">${g}</svg><div class="warn">Schematic map, not real geography. OpenStreetMap and routing are not connected.</div>`}
+function render(){
+ $('#chip').innerHTML=tg('S','M10 state: '+S.m10)+(auto?tg('A','AUTO'):tg('','STEP MODE — press Next step'));
+ $('#v1').className=view==='ops'?'on':'';$('#v2').className=view==='arch'?'on':'';$('#dbg').className=dbg?'on':'';
+ const P=S.pending,f=S.facts;
+ if(view==='arch'){$('#app').innerHTML=`<div style="padding:10px 14px"><span class="warn">Highlighted: module currently executing. Modules write events to Module 11; Module 12 reads them. The flow is not a pure chain.</span></div><div class="arch" style="padding:0 14px">${MODS.map(m=>`<div class="${S.mod===m[0]?'cur':''}"><b>Module ${m[0]}</b> ${m[0]===5?tg('D','DETERMINISTIC'):m[0]===3?tg('A','AI'):''}<br>${m[1]}<br>${tg('S','SIMULATED')}<br><span style="color:var(--m)">Production: ${m[2]}</span></div>`).join('')}</div><div class="bus">Module 11 — event bus and database (every emit() in this simulation lands here)</div>${real()}`;return}
+ const call=`<div class="pn cy"><h2>Active call ${tg('S','SIMULATED')}</h2>${S.call?S.call.tr.slice(-6).map(m=>`<div class="msg ${m.w}"><b>${m.w==='ai'?'🔊 AI':'Caller'}</b><br>${esc(m.t)}</div>`).join(''):'No call. Press Start scenario.'}
+ ${P&&P.kind==='answer'?`<div class="q">Caller answers: ${P.opts.map(o=>`<button onclick="pick('${o}')">${o==='DK'?"DON'T KNOW":o}</button>`).join('')}</div>`:''}</div>`;
+ const mods=`<div class="pn"><h2>Module 2 — Speech ${tg('S','SIMULATED STT')}</h2>${S.stt?`${esc(S.stt.text)}<br>${S.stt.lang}, confidence ${S.stt.conf}`:'—'}</div>
+ <div class="pn cy"><h2>Module 3 — Qwen / NLP ${tg('A','SIMULATED LLM')}</h2><pre>${S.qwen?esc(JSON.stringify(S.qwen,null,1)):'—'}</pre><div class="warn">LLM output is UNTRUSTED and must be validated.</div></div>
+ <div class="pn"><h2>Module 4 — Conversation ${tg('S','SIMULATED')}</h2>${S.m4?'Missing: '+(S.m4.missing.join(', ')||'none')+'<br>Next question: '+(S.m4.next||'—'):'—'}</div>
+ <div class="pn am"><h2>Module 5 — Protocol engine ${tg('D','DETERMINISTIC')}</h2><pre>${S.proto?esc(JSON.stringify(f))+'\nrule: '+S.proto.rule+'\ndecision: '+S.proto.decision:'—'}</pre><div class="warn">QWEN ≠ AUTHORITY. MODULE 5 = AUTHORITY. Demo rules only, not real medical protocols.</div></div>`;
+ const dv=S.amb.find(a=>a.id===S.sel),g=ll(dv.px);
+ const fleet=`<div class="pn"><h2>Ambulance fleet (Module 6) ${tg('S','ALL SIMULATED')}</h2><table><tr><th>Unit</th><th>Status</th><th>Dist</th><th>ETA</th></tr>${S.amb.map(a=>`<tr><td>${a.id}<br><small>${a.drv}, ${a.loc}</small></td><td>${a.st}${a.ex?'<br><small style="color:var(--rd)">declined</small>':''}${S.rank.indexOf(a.id)>=0?'<br><small>rank '+(S.rank.indexOf(a.id)+1)+'</small>':''}</td><td>${a.st==='BUSY'?'—':a.km+' km'}</td><td>${a.st==='BUSY'?'—':a.eta+' min'}</td></tr>`).join('')}</table></div>`;
+ const phone=`<div class="pn"><h2>Driver phone ${tg('S','SIMULATED')}</h2><div class="ph"><b>${dv.id}</b> driver ${dv.drv}<br>Duty: ON DUTY · Network: ONLINE · Status: ${dv.st}<br><span class="mono">${g.lat}, ${g.lng}</span><br>GPS SOURCE: SIMULATION
+ ${P&&P.kind==='offer'?`<div class="q">🚨 NEW EMERGENCY<br>${esc(S.case.type)}<br>${dv.km} km · ETA ${dv.eta} min<br><button class="go" onclick="pick('ACCEPT')">ACCEPT</button><button onclick="pick('DECLINE')">DECLINE</button></div>`:''}
+ ${P&&P.kind==='reason'?`<div class="q">Decline reason:<br>${P.opts.map(o=>`<button onclick="pick('${o}')">${o}</button>`).join('')}</div>`:''}</div></div>`;
+ const h=HOSP.find(x=>x.id===S.hosp);
+ const hosp=`<div class="pn"><h2>Hospital (7) ${tg('S','SIMULATED')} · Route (8) ${tg('S','SIMULATED')} · Corridor (9) ${tg('S','SIMULATED')}</h2>${HOSP.map(x=>`<div${x.id===S.hosp?' style="color:var(--ok)"':''}>${x.n}: ${x.em}, ${x.km} km, ${x.eta} min${x.id===S.hosp?' ← chosen: emergency available, shortest ETA':''}</div>`).join('')}
+ <div>${S.route?'Route: '+S.route.dist+' km, ETA '+S.route.eta+' min, traffic '+S.route.traffic:'Route: pending'}</div><div>${S.cor?'Corridor '+S.cor.st+': '+S.cor.sig.map((s,i)=>'🚦'+(i+1)+' '+s).join(' · '):'Corridor: pending'}</div></div>`;
+ const m10=`<div class="pn"><h2>Module 10 — Decision state machine</h2><div class="st">${M10.map(s=>`<span class="${s===S.m10?'cur':''}">${s}</span>`).join('')}</div></div>`;
+ const tl=`<div class="pn"><h2>Event timeline (Module 11) ${tg('S','SIMULATED DB')}</h2><div class="ev">${S.ev.slice().reverse().map(e=>`<div>${e.t} M${e.mod} <b>${e.type}</b> ${esc(e.msg)}</div>`).join('')||'No events'}</div></div>`;
+ const kpi=`<div class="pn"><h2>Module 12 — Analytics (computed from events)</h2><table>${an().map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table><small class="warn">Times include your own wait in step mode.</small></div>`;
+ const cs=S.case?`<div class="pn" style="border-color:var(--rd)"><h2>Emergency case</h2><b>${S.case.id}</b> ${S.case.type}<br>${tg('X',S.case.sev)} ${S.case.st}</div>`:'';
+ $('#app').innerHTML=`<main><div class="c">${call}${mods}</div><div class="c">${cs}<div class="pn">${map()}</div>${tl}${kpi}</div><div class="c">${fleet}${phone}${hosp}${m10}</div></main>`
+ +(dbg?`<div class="pn" style="margin:0 14px 10px"><h2>Internal data</h2><pre>${esc(JSON.stringify({call:S.call,facts:S.facts,m4:S.m4,proto:S.proto,case:S.case,dispatch:{rank:S.rank,offer:S.offer},amb:S.amb,hosp:S.hosp,route:S.route,corridor:S.cor,eventLog:S.ev.map(e=>e.t+' '+e.type)},null,1))}</pre></div>`:'')+real()}
+function real(){return`<div style="padding:0 14px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px"><div class="pn"><h2>Current demo</h2>Telephony, STT, Qwen, TTS, GPS, database, routing, traffic, hospitals: SIMULATED<br>Protocol engine: DETERMINISTIC SIMULATION</div><div class="pn"><h2>Real system</h2>Exotel · Malayalam STT/TTS · Qwen · driver Android phone GPS · PostgreSQL · OpenStreetMap · OSRM/ORS · traffic provider · existing Module 5</div></div>`}
+render();
+</script></body></html>

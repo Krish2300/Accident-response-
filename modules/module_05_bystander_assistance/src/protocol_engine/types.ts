@@ -168,3 +168,132 @@ export const UNKNOWN = 'UNKNOWN';
 export function isUnknown(value: unknown): boolean {
   return value === undefined || value === null || value === UNKNOWN || value === '';
 }
+
+// ---------------------------------------------------------------------------
+// The authoritative decision surface
+// ---------------------------------------------------------------------------
+
+/**
+ * A protocol-approved instruction, addressed by a stable identifier.
+ *
+ * `instructionId` is derived, not authored: it is `<protocol_id>@<version>:<step_id>`,
+ * so it survives re-transcription of the wording. A localisation layer renders the
+ * catalogue text into Malayalam (or any language) by looking this key up in a
+ * reviewed translation table. The protocol engine itself never contains localised
+ * text, which is what keeps it language-independent.
+ */
+export interface ProtocolInstruction {
+  instructionId: string;
+  stepId: string;
+  stepType: StepType;
+  orderIndex: number;
+  /** Catalogue wording. Authoritative, persisted, never generated. */
+  text: string;
+}
+
+/**
+ * "What information is required next?", as structure rather than prose.
+ *
+ * Module 5 decides *which* fact is missing and *that* a question is due; it never
+ * decides how to phrase it in a human language beyond the reviewed wording already
+ * in the catalogue. Module 4 / the language layer turns `text` into Malayalam.
+ */
+export interface ProtocolQuestionRequirement {
+  questionId: string;
+  /** Fact keys the engine still needs before the step can be evaluated. */
+  requiredFacts: string[];
+  /** Reviewed catalogue wording for the question actually asked. */
+  text: string;
+  /** Protocol step the question belongs to. */
+  protocolState: string;
+  /** 1-based attempt number, for the conversation layer's retry budget. */
+  attempt: number;
+}
+
+export type ProtocolDecisionType =
+  /** The current step is still the one to follow; nothing changed. */
+  | 'HELD'
+  /** The step may be evaluated but does not progress; the protocol says repeat. */
+  | 'LOOPED'
+  /** A new step became current. */
+  | 'ADVANCED'
+  /** Missing information must be supplied before the step can be evaluated. */
+  | 'QUESTION_REQUIRED'
+  /** A protocol escalation rule or step demanded a human. */
+  | 'ESCALATED'
+  /** The protocol finished. */
+  | 'COMPLETED';
+
+export interface ProtocolDecisionEscalation {
+  ruleId: string;
+  reason: string;
+  severity: 'ADVISORY' | 'URGENT' | 'CRITICAL';
+  action: 'NOTIFY_OPERATOR' | 'CALL_EMERGENCY_SERVICES' | 'BOTH';
+}
+
+/**
+ * The complete, self-describing outcome of one protocol turn.
+ *
+ * Everything the caller needs in order to render, speak, log or audit the turn is
+ * here, and nothing in it originates from a language model.
+ */
+export interface ProtocolDecision {
+  protocolId: string;
+  protocolVersion: string;
+  /** Where the protocol was before this turn. */
+  currentState: string;
+  /** Where the protocol is now. Equal to `currentState` when nothing moved. */
+  nextState: string;
+  decisionType: ProtocolDecisionType;
+  /** Approved instruction to render/speak, when the protocol issued one. */
+  instruction: ProtocolInstruction | null;
+  /** Structured question, when information is required. */
+  requiredQuestion: ProtocolQuestionRequirement | null;
+  escalation: ProtocolDecisionEscalation | null;
+  completed: boolean;
+  /** Facts still missing for the step now current. */
+  missingFacts: string[];
+  /**
+   * Deterministic identifier of the rule that produced this decision. For a
+   * transition it is `<step_id>.transition[<index>]`; for a held step it is
+   * `<step_id>.missing_facts` or `<step_id>.unmatched`; for an escalation it is the
+   * escalation rule id. Derived from catalogue structure, never from prose.
+   */
+  ruleId: string;
+  /** Human-readable justification, from the catalogue note or the engine's guard. */
+  reason: string;
+  audit: ProtocolDecisionAudit;
+}
+
+export interface ProtocolDecisionAudit {
+  /** Protocol version this decision was made against. */
+  protocolVersion: string;
+  /** Citation of the guidance the catalogue content was transcribed from. */
+  protocolSource: string;
+  /** Clinical review state of that content; nothing here is clinician-approved yet. */
+  reviewStatus: Protocol['source']['review_status'];
+  /** Facts this turn contributed, after validation. */
+  acceptedFacts: string[];
+  /** Facts that arrived but were not usable, with the reason. */
+  rejectedFacts: Array<{ fact: string; reason: string }>;
+  /** Facts the protocol has no condition for; dropped rather than stored. */
+  unsupportedFacts: string[];
+  /**
+   * False when the facts for this turn came from an untrusted source (a
+   * low-confidence language model). An untrusted turn can never advance or
+   * complete a protocol; it can only escalate or ask again.
+   */
+  factsTrusted: boolean;
+  /** Wall-clock time of the turn, injected by the caller. */
+  evaluatedAt: string;
+}
+
+/** Stable instruction identifier for a step, independent of its wording. */
+export function instructionIdFor(protocol: Pick<Protocol, 'protocol_id' | 'version'>, stepId: string): string {
+  return `${protocol.protocol_id}@${protocol.version}:${stepId}`;
+}
+
+/** Stable question identifier for one clarification attempt at one step. */
+export function questionIdFor(protocol: Pick<Protocol, 'protocol_id' | 'version'>, stepId: string, attempt: number): string {
+  return `${protocol.protocol_id}@${protocol.version}:${stepId}#q${attempt}`;
+}

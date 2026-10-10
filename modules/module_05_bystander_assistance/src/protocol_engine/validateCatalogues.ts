@@ -19,12 +19,16 @@
  *   - step ids are unique
  *   - no step is unreachable from the entry step
  *   - escalation rules with `severity: CRITICAL` name an `escalation_step`
+ *   - no two files claim the same `protocol_id@version`
+ *   - every value a protocol compares a fact against is a value the extraction
+ *     contract can actually produce
  *
  * It deliberately does NOT modify protocol content. Protocols are clinically
  * authored data; tooling may report on them and never rewrite them.
  */
 import { ProtocolLoader } from './protocolLoader.js';
-import type { Protocol } from './types.js';
+import { CLOSED_FACT_VALUES } from '../llm/contracts.js';
+import type { Condition, Protocol } from './types.js';
 
 interface FileReport {
   file: string;
@@ -34,6 +38,61 @@ interface FileReport {
   stepCount: number;
   errors: string[];
   warnings: string[];
+}
+
+/** Literals every condition of a protocol compares its facts against. */
+function literalsByFact(protocol: Protocol): Map<string, Set<string>> {
+  const literals = new Map<string, Set<string>>();
+
+  const note = (fact: string, value: unknown): void => {
+    if (typeof value !== 'string') return;
+    const set = literals.get(fact) ?? new Set<string>();
+    set.add(value);
+    literals.set(fact, set);
+  };
+
+  const walk = (condition: Condition): void => {
+    if ('all' in condition) return condition.all.forEach(walk);
+    if ('any' in condition) return condition.any.forEach(walk);
+    if ('not' in condition) return walk(condition.not);
+    if ('always' in condition) return;
+    if (condition.op === 'eq') return note(condition.fact, condition.value);
+    if ((condition.op === 'in' || condition.op === 'not_in') && Array.isArray(condition.value)) {
+      for (const value of condition.value) note(condition.fact, value);
+    }
+  };
+
+  for (const condition of protocol.entry_conditions) walk(condition);
+  for (const condition of protocol.completion_conditions) walk(condition);
+  for (const rule of protocol.escalation_rules) walk(rule.when);
+  for (const step of protocol.steps) {
+    for (const transition of step.transitions) walk(transition.when);
+    for (const condition of step.completion_conditions) walk(condition);
+  }
+  return literals;
+}
+
+/**
+ * Warns when a protocol compares a fact against a value extraction cannot produce.
+ *
+ * Not an error: the protocol is the authoritative source, so widening the
+ * extraction contract is the fix and that is a clinical decision. But an
+ * unreachable condition is a silent failure — the protocol reads as covering a
+ * case it cannot actually be told about — so it has to be visible in CI.
+ */
+function auditContractCoverage(protocol: Protocol, warnings: string[]): void {
+  for (const [fact, values] of literalsByFact(protocol)) {
+    const declared = CLOSED_FACT_VALUES[fact];
+    if (declared === undefined) continue; // Unbounded fact: the caller's own words.
+    for (const value of values) {
+      const upper = value.toUpperCase();
+      if (!declared.includes(upper) && upper !== 'UNKNOWN') {
+        warnings.push(
+          `Protocol compares '${fact}' against '${value}', but the extraction contract cannot produce it (declared: ${declared.join(', ')}). That condition cannot be satisfied.`,
+        );
+      }
+    }
+  }
 }
 
 /** Structural checks that the JSON schema cannot express. */
@@ -115,6 +174,8 @@ function audit(protocol: Protocol): { errors: string[]; warnings: string[] } {
     }
   }
 
+  auditContractCoverage(protocol, warnings);
+
   return { errors, warnings };
 }
 
@@ -122,10 +183,10 @@ async function main(): Promise<number> {
   const dirArgIndex = process.argv.indexOf('--dir');
   const directory = dirArgIndex >= 0 ? process.argv[dirArgIndex + 1] : undefined;
 
-  // `strict = true` makes the loader throw on the first invalid file rather than
-  // collecting problems, which is what we want here: a schema failure is fatal
-  // and must be reported as such, not as an empty catalogue.
-  const loader = new ProtocolLoader(directory, true);
+  // The loader throws on the first structural problem rather than collecting
+  // them, because a schema failure is fatal and must be reported as such, not as
+  // an empty catalogue.
+  const loader = new ProtocolLoader(directory);
 
   let protocols: Protocol[];
   try {

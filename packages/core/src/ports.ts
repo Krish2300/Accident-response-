@@ -178,3 +178,32 @@ export interface AnalyticsReadPort {
   learningSamples(options: { windowDays: number; includeSimulation: boolean }): Promise<unknown[]>;
   snapshotSeries(days: number): Promise<unknown[]>;
 }
+
+
+export interface RouteOptimizationPort {
+  optimizeRoute(input: {
+    from: { latitude: number; longitude: number };
+    to: { latitude: number; longitude: number };
+    ambulanceId?: string;
+    emergencyId?: string;
+    isSimulation?: boolean;
+  }): Promise<{
+    routeId: string;
+    distanceKm: number;
+    estimatedMinutes: number;
+    polyline?: unknown[];
+    provider: string;
+    isLiveTraffic: boolean;
+  }>;
+}
+
+export interface CorridorIntegrationPort {
+  activateCorridor(input: {
+    emergencyId: string;
+    ambulanceId: string;
+    hospitalId: string;
+    from: string;
+    to: string;
+  }): Promise<{ ok: boolean }>;
+}
+

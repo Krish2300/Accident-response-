@@ -60,6 +60,75 @@ export interface TelephonyProvider {
 // Module 2 — speech
 // -----------------------------------------------------------------------------
 
+/**
+ * How much of what the caller said the system was prepared to rely on.
+ *
+ * Exported rather than kept inside Module 2 because the decision is not only
+ * about speech: Module 5 needs the same threshold when deciding whether a
+ * fact came from a clear answer or a mumbled one, and the two must not be able
+ * to disagree about the same audio.
+ */
+export const VOICE_CONFIDENCE = {
+  /**
+   * At or above this, the transcript is treated as a reliable account of what
+   * was said. `HIGH` is not used as a medical claim — it only means the audio
+   * was intelligible.
+   */
+  HIGH: 0.75,
+  /**
+   * Between LOW and HIGH: usable, but the caller should be asked to confirm
+   * before anything time-critical rests on it.
+   */
+  LOW: 0.45,
+  /**
+   * Below this the result is discarded. It is not written to the transcript and
+   * not passed to interpretation, because a guess at this confidence level is
+   * more dangerous than an admitted gap: it can be acted on while looking like
+   * something the caller actually said.
+   */
+  DISCARD_BELOW: 0.45,
+} as const;
+
+export type VoiceConfidenceBand = 'HIGH' | 'LOW' | 'UNUSABLE';
+
+/**
+ * Classifies a confidence score.
+ *
+ * `discardBelow` exists so a deployment can raise the floor above the shared
+ * default without inventing a second policy: HIGH stays anchored to
+ * `VOICE_CONFIDENCE.HIGH`, and only the point at which a result is thrown away
+ * moves. Omitting it uses the shared threshold.
+ */
+export function confidenceBand(
+  confidence: number,
+  discardBelow: number = VOICE_CONFIDENCE.DISCARD_BELOW,
+): VoiceConfidenceBand {
+  if (confidence >= VOICE_CONFIDENCE.HIGH) return 'HIGH';
+  if (confidence >= discardBelow) return 'LOW';
+  return 'UNUSABLE';
+}
+
+/**
+ * Detection of the languages the system can attempt.
+ *
+ * Malayalam is included because the deployment context is Kerala. A number of
+ * languages appear in Indian emergency calls; the list is deliberately the
+ * languages the *providers* are configured for, not an aspiration, and adding a
+ * language here without a provider that supports it only moves the failure from
+ * "language not supported" to a silently wrong transcription.
+ */
+export const SUPPORTED_LANGUAGES = ['en', 'ml'] as const;
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+/**
+ * Returns the base language code, or null when it is not one the system handles.
+ * `en-IN`, `en_US` and `EN` all resolve to `en`.
+ */
+export function normaliseLanguageCode(language: string): SupportedLanguage | null {
+  const base = language.trim().toLowerCase().split(/[-_]/)[0] ?? '';
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(base) ? (base as SupportedLanguage) : null;
+}
+
 export interface TranscriptionRequest {
   callSessionId: string;
   emergencyId: string;

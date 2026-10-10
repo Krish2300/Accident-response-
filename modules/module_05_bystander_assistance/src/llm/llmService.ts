@@ -64,15 +64,50 @@ export interface ResolvedLlm {
  *   1. the configured provider, if its health check passes;
  *   2. the heuristic fallback, if `allowHeuristicFallback` is enabled;
  *   3. otherwise throw LLM_UNAVAILABLE — never silently fabricate output.
+ *
+ * Health is cached for a short window. Resolution runs on every utterance, and an
+ * HTTP probe per turn would add a network round trip to a live emergency call and
+ * let a slow provider push the protocol past its own turn budget. The window is
+ * short enough that a provider coming back or going away is picked up within
+ * seconds, and it is deliberately not re-checked once per call in `resolve`: the
+ * cost of a stale answer is one bad extraction, and the engine treats that as
+ * untrusted rather than acting on it.
  */
 export class LlmGateway {
   private lastKnownHealth: Map<string, LlmHealth> = new Map();
+  private readonly healthCache = new Map<string, { at: number; health: LlmHealth }>();
+  private inflight: Map<string, Promise<LlmHealth>> = new Map();
 
   constructor(
     private readonly registry: LLMServiceRegistry,
     private readonly config: LlmServiceConfig,
     private readonly logger: ReturnType<typeof createConsoleLogger> = createConsoleLogger('warn', 'module_05.llm'),
+    private readonly healthTtlMs = 15_000,
+    private readonly now: () => number = Date.now,
   ) {}
+
+  /** Health for one provider, cached for `healthTtlMs`. */
+  private async healthOf(service: LLMService): Promise<LlmHealth> {
+    const cached = this.healthCache.get(service.providerName);
+    if (cached && this.now() - cached.at < this.healthTtlMs) return cached.health;
+
+    // One probe per provider at a time: concurrent turns that all find the cache
+    // cold should not fan out into parallel probes.
+    const existing = this.inflight.get(service.providerName);
+    if (existing) return existing;
+
+    const probe = service
+      .health()
+      .then((health) => {
+        this.healthCache.set(service.providerName, { at: this.now(), health });
+        return health;
+      })
+      .finally(() => {
+        this.inflight.delete(service.providerName);
+      });
+    this.inflight.set(service.providerName, probe);
+    return probe;
+  }
 
   async resolve(): Promise<ResolvedLlm> {
     const primary = this.registry.get(this.config.provider);
@@ -84,7 +119,7 @@ export class LlmGateway {
       );
     }
 
-    const health = await primary.health();
+    const health = await this.healthOf(primary);
     this.lastKnownHealth.set(primary.providerName, health);
     if (health.available) {
       // The heuristic matcher reports itself available but is not a language
@@ -114,7 +149,13 @@ export class LlmGateway {
     );
   }
 
-  /** Health of every registered provider, for `GET /api/health/llm`. */
+  /**
+   * Health of every registered provider, for `GET /api/health/llm`.
+   *
+   * Uses the same cache as `resolve`, and says so in `cached`: an operator
+   * debugging an outage needs to know whether the answer is a fresh probe or one
+   * that is up to `healthTtlMs` old.
+   */
   async health(): Promise<{
     provider: string;
     model: string;
@@ -124,12 +165,14 @@ export class LlmGateway {
     latencyMs?: number;
     baseUrl?: string;
     checkedAt: string;
+    cached: boolean;
     registered: string[];
     fallbackEnabled: boolean;
   }> {
     const primary = this.registry.get(this.config.provider);
+    const cachedEntry = primary ? this.healthCache.get(primary.providerName) : undefined;
     const primaryHealth = primary
-      ? ((await primary.health()) as LlmHealth)
+      ? await this.healthOf(primary)
       : {
           provider: this.config.provider,
           model: this.config.model,
@@ -154,6 +197,7 @@ export class LlmGateway {
       reason: primaryHealth.reason ?? effective.reason,
       degraded: Boolean(effective.degraded),
       checkedAt: primaryHealth.checkedAt,
+      cached: Boolean(cachedEntry) && this.now() - (cachedEntry?.at ?? 0) < this.healthTtlMs,
       registered: this.registry.names(),
       fallbackEnabled: this.config.allowHeuristicFallback,
     };

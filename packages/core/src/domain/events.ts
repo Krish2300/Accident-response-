@@ -68,6 +68,8 @@ export const SYSTEM_EVENT_TYPES = [
   // module 2 - speech processing
   'TRANSCRIPT_PARTIAL',
   'SPEECH_SYNTHESIZED',
+  'SPEECH_TRANSCRIPTION_FAILED',
+  'SPEECH_SYNTHESIS_FAILED',
 
   // module 3 - emergency NLP
   'NLP_EXTRACTION_COMPLETED',
@@ -309,8 +311,40 @@ export interface EventPayloadMap {
      * True when the spoken text was the protocol's own wording. A false value
      * means the text passed the safety gate as an approved paraphrase.
      */
-    verbatimProtocolText: boolean;
-  };
+verbatimProtocolText: boolean;
+    };
+    /**
+     * A transcription attempt that produced no usable text.
+     *
+     * Recorded so an outage is visible in the incident timeline instead of
+     * appearing only in the server log. `failureKind` separates a provider
+     * fault from audio that was genuinely unintelligible, because the two call
+     * for different responses: retry the provider, or ask the caller to repeat.
+     */
+    SPEECH_TRANSCRIPTION_FAILED: {
+      callSessionId: string;
+      emergencyId: string;
+      provider: string;
+      language: string;
+      failureKind: 'PROVIDER_ERROR' | 'UNSUPPORTED_LANGUAGE' | 'LOW_CONFIDENCE' | 'EMPTY_AUDIO' | 'INVALID_AUDIO';
+      reason: string;
+    };
+    /**
+     * A synthesis attempt that produced no playable audio.
+     *
+     * `blockedBySafetyGate` distinguishes "the provider failed" from "the
+     * safety gate refused this text", which must never be retried with the same
+     * input because the refusal was deliberate.
+     */
+    SPEECH_SYNTHESIS_FAILED: {
+      callSessionId: string | null;
+      emergencyId: string | null;
+      provider: string;
+      language: string;
+      failureKind: 'PROVIDER_ERROR' | 'UNSUPPORTED_LANGUAGE' | 'BLOCKED_BY_SAFETY_GATE';
+      reason: string;
+      characterCount: number;
+    };
 
   // -- module 3 ---------------------------------------------------------------
   NLP_EXTRACTION_COMPLETED: {

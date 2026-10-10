@@ -144,6 +144,19 @@ export class AmbulanceRepository {
     return ambulance;
   }
 
+  async findByAssignedDriverId(driverId: string): Promise<Ambulance | null> {
+    return guardDatabase(async () => {
+      const row = await this.db.ambulance.findFirst({
+        where: { assignedDriverId: driverId },
+        include: { crew: true },
+      });
+      return row ? mapAmbulance(row as unknown as Record<string, unknown>, (row.crew ?? []) as never[]) : null;
+    }, 'Failed to read ambulance by driver');
+  }
+
+  async getAssignedAmbulanceForDriver(driverId: string): Promise<Ambulance | null> {
+    return this.findByAssignedDriverId(driverId);
+  }
   async update(id: string, patch: AmbulancePatch): Promise<Ambulance> {
     const data: Prisma.AmbulanceUpdateInput = {};
     if (patch.status !== undefined) data.status = patch.status;
