@@ -1,6 +1,7 @@
 import {
   AppError,
   ErrorCode,
+  type AudioSegmentDiagnostics,
   confidenceBand,
   defineEvent,
   normaliseLanguageCode,
@@ -80,6 +81,9 @@ export interface TranscribeInput {
   speaker?: TranscriptSpeaker;
   /** False for an interim result. Interim results are never persisted. */
   isFinal?: boolean;
+  /** Request metadata-only diagnostics for a controlled synthetic test. */
+  diagnosticScope?: 'synthetic-test';
+  segmentDiagnostics?: AudioSegmentDiagnostics;
   /** Supplied by Module 3 once it has interpreted the utterance. */
   intent?: string | null;
 }
@@ -206,6 +210,12 @@ export class SpeechService {
         language,
         audio: input.audio,
         isFinal,
+        ...(session.isSimulation && input.diagnosticScope === 'synthetic-test'
+          ? {
+              diagnosticScope: 'synthetic-test' as const,
+              ...(input.segmentDiagnostics ? { segmentDiagnostics: input.segmentDiagnostics } : {}),
+            }
+          : {}),
       });
     } catch (error) {
       const isLanguage = error instanceof AppError && error.code === ErrorCode.SPEECH_LANGUAGE_UNSUPPORTED;

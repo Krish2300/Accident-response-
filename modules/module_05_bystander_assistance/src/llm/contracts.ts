@@ -75,6 +75,26 @@ export const entitiesSchema = z.object({
   caller_with_patient: z.enum(TRISTATE).default('UNKNOWN'),
   age_group: z.enum(AGE_GROUPS).default('UNKNOWN'),
   patient_count: z.number().int().min(1).max(50).nullable().default(null),
+  /**
+   * The caller's own words for where they are.
+   *
+   * The `call-emergency-services` step gates on `caller_location exists`, so
+   * without this field the protocol can never leave that step: zod strips any
+   * key the schema does not declare, so neither the Ollama path nor the
+   * heuristic path can ever produce it. It is unbounded free text — the engine
+   * accepts whatever the caller said and never invents an address.
+   */
+  caller_location: z.string().max(200).nullable().default(null),
+  /**
+   * Whether the bystander has begun chest compressions.
+   *
+   * The `start-compressions` step gates on `cpr_started eq YES`, so without
+   * this field the protocol can never advance into active CPR however many
+   * times the caller says they are pushing. A closed tristate: `YES` means the
+   * caller stated they started, `NO` means they stated they have not, and
+   * `UNKNOWN` means they did not say — never inferred.
+   */
+  cpr_started: z.enum(TRISTATE).default('UNKNOWN'),
   mechanism: z.string().max(200).nullable().default(null),
   duration_minutes: z.number().min(0).max(1440).nullable().default(null),
   /** Free-form observations kept for the record; never used for decisions. */
@@ -104,8 +124,9 @@ export type Extraction = z.infer<typeof extractionSchema>;
  * and does not mean "the only possible value is YES".
  *
  * The engine treats any fact absent from this map as unbounded and accepts
- * whatever it is given, which is how `caller_location` (a caller's own words) and
- * `cpr_started` keep working.
+ * whatever it is given, which is how `caller_location` — a caller's own words,
+ * never a closed set — keeps working. `cpr_started` is listed here because it
+ * is a closed tristate (`YES`/`NO`/`UNKNOWN`), not free text.
  */
 export const CLOSED_FACT_VALUES: Readonly<Record<string, readonly string[]>> = {
   responsive: TRISTATE,
@@ -117,6 +138,7 @@ export const CLOSED_FACT_VALUES: Readonly<Record<string, readonly string[]>> = {
   chest_pain: TRISTATE,
   scene_safe: TRISTATE,
   caller_with_patient: TRISTATE,
+  cpr_started: TRISTATE,
   age_group: AGE_GROUPS,
 };
 

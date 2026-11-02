@@ -1,0 +1,37 @@
+
+> prehospital-emergency-survival-system@0.1.0 demo:verify
+> tsx scripts/demo-verify.ts
+
+[demo-verify] backend  : http://127.0.0.1:4000
+[demo-verify] dashboard: http://127.0.0.1:5173
+PASS  backend health endpoint on the real socket — HTTP 200, env=test
+PASS  unauthenticated dashboard read is rejected — HTTP 401
+PASS  invalid credentials are rejected — HTTP 401
+PASS  demo accounts authenticate — p2-dispatcher-20261023@resus.local, p2-driver-20261023@resus.local
+PASS  live dashboard projection returns the demo emergency — HTTP 200, 1 emergency/ies
+PASS  demo emergency identifier resolved — EMG-CC0F380E060006
+PASS  demo ambulance present in the live fleet — DEMO419-9FEE14 (AMB-C360F4A0F20004)
+PASS  authorized driver GPS update is accepted — HTTP 200, source=MOBILE
+PASS  fleet freshness reflects the authorized update — DEMO419-9FEE14 lastLocationUpdate=2026-10-25T12:24:10.981Z ageMs=13
+PASS  lifecycle projection is served authenticated — HTTP 200, state=OPERATIONAL_COMPLETION_RECORDED
+PASS  final transcript and operator classification observed — transcript=true, classification=CARDIAC_ARREST/OPERATOR
+PASS  all four lifecycle milestones are operator-reported — sceneArrival=OPERATOR_REPORTED, patientOnboard=OPERATOR_REPORTED, hospitalArrival=OPERATOR_REPORTED, operationalCompletion=OPERATOR_REPORTED
+PASS  completion carries no survival claim — status=COMPLETED, evidence=OPERATOR_REPORTED
+PASS  duplicate milestone request is idempotent — HTTP 200, duplicate=true
+PASS  driver role cannot record operational milestones — HTTP 403
+PASS  unknown emergency returns a structured 404 — HTTP 404, code=NOT_FOUND
+PASS  unknown milestone is rejected — HTTP 422
+PASS  learning sample reads stay restricted to admin — HTTP 403
+PASS  browser loads the dashboard shell — Emergency Operations Dashboard
+PASS  browser shows the rejected sign-in — Invalid email or password.
+PASS  browser authenticates against the listening backend — authenticated live view rendered
+PASS  token is not persisted in web storage — localStorage + sessionStorage entries = 0
+PASS  live emergencies reach the browser — EMG-CC0F380E060006 · CARDIAC_ARREST · CRITICAL · simulation
+PASS  fleet panel renders freshness state — freshness column populated
+PASS  lifecycle projection renders in the browser — operator-reported milestones listed
+PASS  evidence semantics are visible in the browser — evidence source and no-outcome disclaimer rendered
+PASS  dispatch workflow renders in the browser — workflow + non-live route provenance
+PASS  observed lifecycle facts are present — 12 observed markers
+
+[demo-verify] 28/28 checks passed
+[demo-verify] live dashboard verification succeeded

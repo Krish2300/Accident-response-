@@ -148,6 +148,18 @@ export const jsonSchemas = {
           scene_safe: { type: 'string', enum: ['YES', 'NO', 'UNKNOWN'] },
           caller_with_patient: { type: 'string', enum: ['YES', 'NO', 'UNKNOWN'] },
           age_group: { type: 'string', enum: ['INFANT', 'CHILD', 'ADULT', 'ELDERLY', 'UNKNOWN'] },
+          caller_location: {
+            type: ['string', 'null'],
+            maxLength: 200,
+            description:
+              "The caller's own words for where they are (e.g. 'twelve main street'). Null if the caller did not state a location — never invent an address.",
+          },
+          cpr_started: {
+            type: 'string',
+            enum: ['YES', 'NO', 'UNKNOWN'],
+            description:
+              'YES only when the caller states they have begun chest compressions. NO only when they state they have not. UNKNOWN otherwise — never infer.',
+          },
           patient_count: { type: ['integer', 'null'], minimum: 1, maximum: 50 },
           mechanism: { type: ['string', 'null'], maxLength: 200 },
           duration_minutes: { type: ['number', 'null'], minimum: 0, maximum: 1440 },

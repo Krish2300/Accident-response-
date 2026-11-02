@@ -46,6 +46,7 @@ export type IncidentType = (typeof INCIDENT_TYPES)[number];
 
 export const AMBULANCE_STATUSES = [
   'AVAILABLE',
+  'ASSIGNED',
   'DISPATCHED',
   'EN_ROUTE',
   'AT_SCENE',
@@ -78,7 +79,7 @@ export type ProtocolStepStatus = (typeof PROTOCOL_STEP_STATUSES)[number];
 export const ASSIGNMENT_SOURCES = ['AUTOMATIC', 'MANUAL_OVERRIDE'] as const;
 export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];
 
-export const ASSIGNMENT_DECISIONS = ['ASSIGNED', 'DECLINED', 'CANCELLED'] as const;
+export const ASSIGNMENT_DECISIONS = ['ASSIGNED', 'ACCEPTED', 'DECLINED', 'DISPATCHED', 'CANCELLED'] as const;
 export type AssignmentDecisionType = (typeof ASSIGNMENT_DECISIONS)[number];
 
 export const HOSPITAL_STATUSES = ['OPEN', 'BUSY', 'DIVERTING', 'CLOSED'] as const;
@@ -134,6 +135,31 @@ export const OUTCOME_STATUSES = [
   'UNKNOWN',
 ] as const;
 export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
+
+export const OUTCOME_CORRECTION_REASON_CODES = [
+  'DATA_ENTRY_ERROR',
+  'NEW_VERIFIED_EVIDENCE',
+  'CATEGORY_REASSESSMENT',
+  'IDENTIFIER_CORRECTION',
+] as const;
+export type OutcomeCorrectionReasonCode = (typeof OUTCOME_CORRECTION_REASON_CODES)[number];
+
+export const OUTCOME_REVIEW_DECISIONS = ['APPROVED', 'REJECTED', 'NEEDS_EVIDENCE'] as const;
+export type OutcomeReviewDecision = (typeof OUTCOME_REVIEW_DECISIONS)[number];
+
+export const OUTCOME_ELIGIBILITY_DECISIONS = ['ELIGIBLE', 'INELIGIBLE'] as const;
+export type OutcomeEligibilityDecision = (typeof OUTCOME_ELIGIBILITY_DECISIONS)[number];
+
+export const OUTCOME_REVIEW_REASON_CODES = [
+  'VERIFIED_EVIDENCE',
+  'INSUFFICIENT_EVIDENCE',
+  'UNSUPPORTED_CATEGORY',
+  'SIMULATION_DATA',
+  'TEST_DATA',
+  'UNVERIFIED_PROVENANCE',
+  'OUTCOME_UNCERTAIN',
+  'REJECTED_INVALID',
+] as const;
 
 export const CALL_SESSION_STATUSES = ['ACTIVE', 'ENDED'] as const;
 export type CallSessionStatus = (typeof CALL_SESSION_STATUSES)[number];
@@ -224,6 +250,8 @@ export const USER_ROLES = [
   'OPERATOR',
   'DISPATCHER',
   'CLINICAL_SUPERVISOR',
+  'OUTCOME_SUBMITTER',
+  'OUTCOME_REVIEWER',
   'DRIVER',
   'AMBULANCE_DRIVER',
   'ADMIN',

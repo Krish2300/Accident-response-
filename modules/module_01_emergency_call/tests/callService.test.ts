@@ -98,6 +98,7 @@ class FakeCalls implements CallSessionStore {
   private sequence = 0;
 
   async startSession(input: {
+    id?: string;
     emergencyId: string;
     channel?: string;
     callerId?: string | null;
@@ -106,7 +107,8 @@ class FakeCalls implements CallSessionStore {
   }): Promise<CallSession> {
     this.sequence += 1;
     const session: CallSession = {
-      id: `CALL-${this.sequence}`,
+      // Mirrors Module 11: the transport's id wins when Module 1 supplies one.
+      id: input.id ?? `CALL-${this.sequence}`,
       emergencyId: input.emergencyId,
       channel: input.channel ?? 'VOICE',
       callerId: input.callerId ?? null,
@@ -167,6 +169,7 @@ class ScriptedTelephony implements TelephonyProvider {
   readonly providerName = 'scripted';
   readonly isLive = false;
   hangupCalls = 0;
+  hangupIds: string[] = [];
   shouldFailOriginate = false;
   shouldFailHangup = false;
 
@@ -181,8 +184,9 @@ class ScriptedTelephony implements TelephonyProvider {
     };
   }
 
-  async hangup(): Promise<void> {
+  async hangup(callSessionId: string): Promise<void> {
     this.hangupCalls += 1;
+    this.hangupIds.push(callSessionId);
     if (this.shouldFailHangup) throw new Error('carrier unreachable');
   }
 
@@ -276,6 +280,19 @@ describe('opening a call', () => {
     expect(calls.sessions).toHaveLength(1);
   });
 
+  it("gives the session the transport's own id so hangup can address the call leg", async () => {
+    const telephony = new ScriptedTelephony();
+    const { service } = harness(telephony);
+
+    const opened = await service.open({ ...location });
+    // The provider identifies the leg before the row exists; the row must carry
+    // that id, or a later hangup reaches the carrier for an unknown call.
+    expect(opened.session.id).toBe('h1');
+
+    await service.close(opened.session.id);
+    expect(telephony.hangupIds).toEqual(['h1']);
+  });
+
   it('records CALL_FAILED when reconnecting to a closed emergency cannot connect', async () => {
     const telephony = new ScriptedTelephony();
     const { service, events } = harness(telephony);
@@ -362,6 +379,34 @@ describe('call duration limit', () => {
     const late = await service.enforceMaxDuration(new Date(startedAt + 31 * 60_000));
     expect(late).toHaveLength(1);
     expect(calls.sessions.at(-1)?.status).toBe('ENDED');
+  });
+
+  it('never closes a session that started before the watermark, even when overdue', async () => {
+    const { service, calls } = harness();
+    await service.open({ ...location });
+    const session = calls.sessions.at(-1)!;
+    const startedAt = new Date(session.startedAt).getTime();
+
+    // The session is a full hour old, but it predates the watch that would have
+    // closed it: a restart must not mass-end calls left behind by a crash.
+    const watermark = new Date(startedAt + 60_000);
+    const closed = await service.enforceMaxDuration(new Date(startedAt + 60 * 60_000), watermark);
+
+    expect(closed).toHaveLength(0);
+    expect(session.status).toBe('ACTIVE');
+  });
+
+  it('still closes an over-duration session that started after the watermark', async () => {
+    const { service, calls } = harness();
+    await service.open({ ...location });
+    const session = calls.sessions.at(-1)!;
+    const startedAt = new Date(session.startedAt).getTime();
+
+    const watermark = new Date(startedAt - 60_000);
+    const closed = await service.enforceMaxDuration(new Date(startedAt + 31 * 60_000), watermark);
+
+    expect(closed).toHaveLength(1);
+    expect(session.status).toBe('ENDED');
   });
 });
 

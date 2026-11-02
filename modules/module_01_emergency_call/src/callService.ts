@@ -56,6 +56,16 @@ import type { Module1Config } from './config.js';
 
 export interface CallSessionStore {
   startSession(input: {
+    /**
+     * Id the transport already assigned to this call.
+     *
+     * A real carrier identifies the call leg before the row exists, and the
+     * provider can only hang that leg up by the same id. Threading it through
+     * here is what makes `telephony.hangup()` resolvable for a live transport;
+     * when omitted the store generates its own id, which is the development
+     * `LoopbackTelephonyProvider` case.
+     */
+    id?: string;
     emergencyId: string;
     channel?: string;
     callerId?: string | null;
@@ -140,11 +150,35 @@ export interface CallServiceDeps {
   logger?: Logger;
 }
 
+export type SyntheticSpeechTimingMarker = 'speech-start' | 'speech-end';
+export interface SyntheticTimingMarkerReceipt {
+  accepted: boolean;
+  reason?: 'no-active-audio-stream' | 'invalid-order' | 'duplicate' | 'limit-reached';
+  callRelativeMs?: number;
+}
+
 export class CallService {
   private readonly logger: Logger;
+  private syntheticTimingMarkerSink: ((callSessionId: string, marker: SyntheticSpeechTimingMarker) => SyntheticTimingMarkerReceipt) | null = null;
 
   constructor(private readonly deps: CallServiceDeps) {
     this.logger = deps.logger ?? noopLogger;
+  }
+
+  /** Installed only by the live Asterisk runtime; simulation and ACTIVE checks remain mandatory. */
+  setSyntheticTimingMarkerSink(
+    sink: (callSessionId: string, marker: SyntheticSpeechTimingMarker) => SyntheticTimingMarkerReceipt,
+  ): void {
+    this.syntheticTimingMarkerSink = sink;
+  }
+
+  async markSyntheticSpeechTiming(callSessionId: string, marker: SyntheticSpeechTimingMarker): Promise<SyntheticTimingMarkerReceipt> {
+    const session = await this.deps.calls.sessionById(callSessionId);
+    if (!session || session.status !== 'ACTIVE' || !session.isSimulation) {
+      throw AppError.notFound('Active synthetic call', callSessionId);
+    }
+    if (!this.syntheticTimingMarkerSink) throw AppError.notFound('Synthetic AudioSocket timing diagnostics');
+    return this.syntheticTimingMarkerSink(callSessionId, marker);
   }
 
   /**
@@ -209,6 +243,9 @@ export class CallService {
 
     // `startSession` emits CALL_STARTED inside its own transaction.
     const session = await this.deps.calls.startSession({
+      // The transport's own id for this call leg, so a later `hangup()` can
+      // address the correct channel. See `CallSessionStore.startSession`.
+      id: handle.callSessionId,
       emergencyId: emergency.id,
       channel: input.channel ?? handle.transport,
       callerId: input.callerId ?? null,
@@ -363,13 +400,20 @@ export class CallService {
    * so Module 10 can schedule it and tests can drive it without waiting on a
    * clock. Only sessions that are still ACTIVE and genuinely over the limit are
    * closed, so the call is never dropped early because of clock skew.
+   *
+   * `notBefore` is a lower bound on the session start time. A session that
+   * started before it is never touched, which lets a scheduler that begins
+   * watching part-way through a process lifetime leave calls that predate it
+   * alone. The filter lives here, not in the caller, so every caller gets it.
    */
-  async enforceMaxDuration(now: Date = new Date()): Promise<CloseCallResult[]> {
+  async enforceMaxDuration(now: Date = new Date(), notBefore?: Date): Promise<CloseCallResult[]> {
     const limitMs = this.deps.config.telephony.maxCallDurationMinutes * 60_000;
     const closed: CloseCallResult[] = [];
 
     for (const session of await this.deps.calls.activeSessions()) {
-      const elapsed = now.getTime() - new Date(session.startedAt).getTime();
+      const startedAt = new Date(session.startedAt).getTime();
+      if (notBefore && startedAt < notBefore.getTime()) continue;
+      const elapsed = now.getTime() - startedAt;
       if (elapsed < limitMs) continue;
       const result = await this.close(session.id, 'Maximum call duration reached.');
       if (result.closed) closed.push(result);

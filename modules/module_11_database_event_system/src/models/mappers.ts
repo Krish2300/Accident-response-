@@ -13,6 +13,7 @@ import {
   type Decision,
   type Emergency,
   type Hospital,
+  type HospitalResource,
   type Outcome,
   type ProtocolSession,
   type ProtocolStepRecord,
@@ -151,6 +152,9 @@ export function mapAssignment(row: Row): AmbulanceAssignment {
     decidedByUserId: str(row.decidedByUserId),
     decidedAt: iso(row.decidedAt),
     createdAt: iso(row.createdAt),
+      offeredAt: row.offeredAt ? iso(row.offeredAt) : null,
+      expiresAt: row.expiresAt ? iso(row.expiresAt) : null,
+      consideredCandidates: Number(row.consideredCandidates ?? 0),
   };
 }
 
@@ -167,6 +171,18 @@ export function mapHospital(row: Row): Hospital {
     contactPhone: str(row.contactPhone),
     address: str(row.address),
     createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+export function mapHospitalResource(row: Row): HospitalResource {
+  return {
+    id: String(row.id),
+    hospitalId: String(row.hospitalId),
+    resourceType: String(row.resourceType) as HospitalResource['resourceType'],
+    code: String(row.code ?? ''),
+    total: Number(row.total),
+    available: Number(row.available),
     updatedAt: iso(row.updatedAt),
   };
 }

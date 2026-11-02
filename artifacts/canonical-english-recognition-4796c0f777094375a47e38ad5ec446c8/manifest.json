@@ -1,0 +1,219 @@
+{
+  "experimentId": "4796c0f777094375a47e38ad5ec446c8",
+  "authorization": "New canonical English recognition experiment; explicitly authorized by user. This is not a reproduction of the missing original seven-phrase set.",
+  "phrases": [
+    {
+      "number": 1,
+      "file": "sample-01.wav",
+      "expected": "Hello, can you hear me?"
+    },
+    {
+      "number": 2,
+      "file": "sample-02.wav",
+      "expected": "I need help, please."
+    },
+    {
+      "number": 3,
+      "file": "sample-03.wav",
+      "expected": "I am calling from the main road."
+    },
+    {
+      "number": 4,
+      "file": "sample-04.wav",
+      "expected": "The nearest landmark is the bus station."
+    },
+    {
+      "number": 5,
+      "file": "sample-05.wav",
+      "expected": "The house number is twenty-four."
+    },
+    {
+      "number": 6,
+      "file": "sample-06.wav",
+      "expected": "Please send the information to the operator."
+    },
+    {
+      "number": 7,
+      "file": "sample-07.wav",
+      "expected": "I will stay here and answer your questions."
+    }
+  ],
+  "tts": {
+    "executable": "/usr/bin/espeak-ng",
+    "version": "1.52.0",
+    "voice": "en-gb",
+    "rateWpm": 145,
+    "pitch": 50,
+    "amplitude": 110
+  },
+  "humanReview": "Pending. Do not infer intelligibility from WAV validity or Whisper output.",
+  "acceptance": {
+    "newExperiment": true,
+    "originalSevenPhraseGate": "UNRESOLVED; new set is not a reproduction or retroactive replacement.",
+    "offlineCriterion": "7/7 normalized matches through provider, with direct CLI and provider agreement on all seven; human review recorded separately."
+  },
+  "wavIntegrity": [
+    {
+      "number": 1,
+      "file": "sample-01.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-01.wav",
+      "expected": "Hello, can you hear me?",
+      "bytes": 92054,
+      "sha256": "c494362f94715688c6f8eb29178c1cd9a1bd40c4992735cf184f516577e631f7",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 46005,
+      "durationSeconds": 2.086395,
+      "rms": 2906.1,
+      "peak": 27954,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-01.wav"
+    },
+    {
+      "number": 2,
+      "file": "sample-02.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-02.wav",
+      "expected": "I need help, please.",
+      "bytes": 91860,
+      "sha256": "ac3d5bc5b5529d7f18f38ced86b1c6d5f3ef1a2f7480c94a5a6a1499290a52ed",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 45908,
+      "durationSeconds": 2.081995,
+      "rms": 2521.82,
+      "peak": 21907,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-02.wav"
+    },
+    {
+      "number": 3,
+      "file": "sample-03.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-03.wav",
+      "expected": "I am calling from the main road.",
+      "bytes": 98724,
+      "sha256": "ae85ddf8d894601b3ab858ebaa94c5ae49d83aecb2c771409022ff2bf83de75d",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 49340,
+      "durationSeconds": 2.237642,
+      "rms": 3346.08,
+      "peak": 27676,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-03.wav"
+    },
+    {
+      "number": 4,
+      "file": "sample-04.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-04.wav",
+      "expected": "The nearest landmark is the bus station.",
+      "bytes": 125162,
+      "sha256": "97cec591fdf6554ffbbb94bf39c5f96504f2adf241ec794523e100e62922e0a5",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 62559,
+      "durationSeconds": 2.837143,
+      "rms": 3170.49,
+      "peak": 28756,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-04.wav"
+    },
+    {
+      "number": 5,
+      "file": "sample-05.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-05.wav",
+      "expected": "The house number is twenty-four.",
+      "bytes": 105162,
+      "sha256": "89243f180e5dd880668349cc90f53b64eeb61bf26b8c8636c2c084988c2c3dda",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 52559,
+      "durationSeconds": 2.383628,
+      "rms": 3543.11,
+      "peak": 27202,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-05.wav"
+    },
+    {
+      "number": 6,
+      "file": "sample-06.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-06.wav",
+      "expected": "Please send the information to the operator.",
+      "bytes": 135918,
+      "sha256": "b0249ae01950e7c16752c6369248ce2174b430c03fed0af83a2c1ce265f59100",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 67937,
+      "durationSeconds": 3.081043,
+      "rms": 3207.53,
+      "peak": 27500,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-06.wav"
+    },
+    {
+      "number": 7,
+      "file": "sample-07.wav",
+      "path": "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/sample-07.wav",
+      "expected": "I will stay here and answer your questions.",
+      "bytes": 137946,
+      "sha256": "604337645ae9c5aa6d2252d99459c32637d3fc52c2198e5d9653c3d25b757600",
+      "encoding": "PCM S16LE",
+      "sampleRateHz": 22050,
+      "channels": 1,
+      "bitsPerSample": 16,
+      "frames": 68951,
+      "durationSeconds": 3.127029,
+      "rms": 3216.14,
+      "peak": 26262,
+      "decoded": true,
+      "nonSilent": true,
+      "windowsPath": "F:\\minor\\artifacts\\canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8\\sample-07.wav"
+    }
+  ],
+  "recognitionSummary": {
+    "samples": 7,
+    "directFailures": 0,
+    "providerFailures": 0,
+    "directExact": 3,
+    "directNormalized": 3,
+    "providerExact": 3,
+    "providerNormalized": 3,
+    "exactAgreement": 7,
+    "normalizedAgreement": 7
+  },
+  "normalization": "NFKC, lowercase, Unicode punctuation/symbols replaced by spaces, whitespace collapsed, trim; exact comparison trims outer whitespace only.",
+  "technicalFailures": {
+    "direct": 0,
+    "provider": 0
+  },
+  "newCanonicalSetResult": "FAIL: fewer than 7/7 normalized expected-text matches; human review pending.",
+  "whisper": {
+    "version": "1.9.5-dev",
+    "binary": "/home/resus/whisper.cpp/build/bin/whisper-cli",
+    "model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+    "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+    "language": "en",
+    "threads": 4,
+    "translation": false,
+    "jsonFlag": "-ojf",
+    "noTimestamps": true
+  },
+  "generationCommandWrapperNote": "The first combined shell wrapper returned exit 1 after WAV generation because an extra heredoc delimiter reached Python; the independent verify-wavs.py run then completed with exit 0 and validated all seven files."
+}

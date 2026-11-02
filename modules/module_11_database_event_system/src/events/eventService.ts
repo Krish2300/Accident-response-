@@ -204,7 +204,7 @@ function toCreateData(event: SystemEventEnvelope, context: RecordContext) {
     );
   }
   return {
-    id: createId('EVT'),
+    id: event.eventId ?? createId('EVT'),
     type: event.type,
     emergencyId: event.emergencyId ?? context.emergencyId ?? null,
     entityType: event.entityType ?? null,

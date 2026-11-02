@@ -1,5 +1,13 @@
 import type { PrismaClient } from '@prisma/client';
-import { type Transcript, AppError, createId, defineEvent, isValidCoordinate } from '@resus/core';
+import {
+  type Coordinate,
+  type Transcript,
+  AppError,
+  createId,
+  defineEvent,
+  isValidCoordinate,
+  type SystemEventEnvelope,
+} from '@resus/core';
 import { guardDatabase, withTransaction } from '../db/client.js';
 import type { EventService } from '../events/eventService.js';
 
@@ -38,13 +46,23 @@ export class CallRepository {
   ) {}
 
   async startSession(input: {
+    /**
+     * Transport-assigned id, when the caller has one.
+     *
+     * A real telephony provider allocates the call-leg id before this row is
+     * written and can only hang that leg up by the same id, so Module 1 passes
+     * the provider's handle id through. Callers without a transport (the
+     * loopback provider, direct repository tests) omit it and get a generated
+     * one, exactly as before.
+     */
+    id?: string;
     emergencyId: string;
     channel?: string;
     callerId?: string | null;
     language?: string;
     isSimulation?: boolean;
   }): Promise<CallSessionRecord> {
-    const id = createId('CALL');
+    const id = input.id ?? createId('CALL');
     const row = await guardDatabase(
       async () =>
         withTransaction(this.db, async (tx) => {
@@ -235,6 +253,111 @@ export interface RouteRecord {
   status: string;
   estimatedMinutes: number | null;
   isSimulation: boolean;
+  /** Routing provider that produced the route (`mock`, `osrm`, …). */
+  provider: string;
+  /** False unless a provider with a live traffic feed produced the route. */
+  isLiveTraffic: boolean;
+  trafficFactor: number | null;
+  /** Alternatives the provider considered but did not select. */
+  alternatives: unknown[];
+  /** Why the selected route won, as written by the provider. */
+  selectionReason: Record<string, unknown> | null;
+  recalculationCount: number;
+}
+
+export interface CreateRouteInput {
+  emergencyId: string;
+  ambulanceId: string;
+  hospitalId?: string | null;
+  originName?: string;
+  destinationName: string;
+  origin: { latitude: number; longitude: number };
+  destination: { latitude: number; longitude: number };
+  distanceKm: number;
+  polyline?: Array<[number, number]>;
+  estimatedMinutes?: number | null;
+  isSimulation?: boolean;
+  provider?: string;
+  isLiveTraffic?: boolean;
+  trafficFactor?: number | null;
+  alternatives?: unknown[];
+  selectionReason?: Record<string, unknown> | null;
+}
+
+function routeCreateData(id: string, input: CreateRouteInput) {
+  return {
+    id,
+    emergencyId: input.emergencyId,
+    ambulanceId: input.ambulanceId,
+    hospitalId: input.hospitalId ?? null,
+    originName: input.originName ?? 'INCIDENT',
+    destinationName: input.destinationName,
+    originLat: input.origin.latitude,
+    originLng: input.origin.longitude,
+    destLat: input.destination.latitude,
+    destLng: input.destination.longitude,
+    distanceKm: input.distanceKm,
+    polylineJson: JSON.stringify(input.polyline ?? []),
+    estimatedMinutes: input.estimatedMinutes ?? null,
+    isSimulation: input.isSimulation ?? false,
+    provider: input.provider ?? 'mock',
+    isLiveTraffic: input.isLiveTraffic ?? false,
+    trafficFactor: input.trafficFactor ?? null,
+    alternativesJson: JSON.stringify(input.alternatives ?? []),
+    selectionReasonJson: JSON.stringify(input.selectionReason ?? {}),
+  };
+}
+
+export interface CorridorRecord {
+  id: string;
+  emergencyId: string;
+  ambulanceId: string;
+  hospitalId: string;
+  fromLabel: string;
+  toLabel: string;
+  estimatedMinutes: number;
+  isActive: boolean;
+  activatedAt: string;
+  releasedAt: string | null;
+  isSimulation: boolean;
+  status: string;
+  priorityMode: string;
+  radiusM: number;
+  geofence: Array<[number, number]>;
+  roadUsers: unknown[];
+  signals: unknown[];
+  renegotiationCount: number;
+}
+
+export interface CorridorActivationInput {
+  emergencyId: string;
+  ambulanceId: string;
+  hospitalId: string;
+  fromLabel: string;
+  toLabel: string;
+  estimatedMinutes: number;
+  isSimulation?: boolean;
+  /** `SIMULATED` | `NOTIFY_ONLY` | `INTEGRATED`. Defaults to `SIMULATED`. */
+  priorityMode?: string;
+  radiusM?: number;
+  /** Corridor centre line; stored as a JSON array of `[lat,lng]` points. */
+  geofence?: Coordinate[];
+  /** Simulated road-user detections (stored as JSON verbatim). */
+  roadUsers?: unknown;
+  /** Junctions where priority was requested (stored as JSON verbatim). */
+  signals?: unknown;
+}
+
+export interface CorridorActivationResult {
+  id: string;
+  status: string;
+  isActive: boolean;
+  /** False when an active corridor for this emergency already existed. */
+  activated: boolean;
+}
+
+export interface CorridorReleaseResult {
+  released: boolean;
 }
 
 /** Planned routes and their progress trail, plus the emergency-corridor record. */
@@ -244,19 +367,7 @@ export class RouteRepository {
     private readonly events: EventService,
   ) {}
 
-  async createRoute(input: {
-    emergencyId: string;
-    ambulanceId: string;
-    hospitalId?: string | null;
-    originName?: string;
-    destinationName: string;
-    origin: { latitude: number; longitude: number };
-    destination: { latitude: number; longitude: number };
-    distanceKm: number;
-    polyline?: Array<[number, number]>;
-    estimatedMinutes?: number | null;
-    isSimulation?: boolean;
-  }): Promise<RouteRecord> {
+  async createRoute(input: CreateRouteInput): Promise<RouteRecord> {
     if (
       !isValidCoordinate(input.origin) ||
       !isValidCoordinate(input.destination)
@@ -267,26 +378,32 @@ export class RouteRepository {
     const row = await guardDatabase(
       async () =>
         this.db.route.create({
-          data: {
-            id,
-            emergencyId: input.emergencyId,
-            ambulanceId: input.ambulanceId,
-            hospitalId: input.hospitalId ?? null,
-            originName: input.originName ?? 'INCIDENT',
-            destinationName: input.destinationName,
-            originLat: input.origin.latitude,
-            originLng: input.origin.longitude,
-            destLat: input.destination.latitude,
-            destLng: input.destination.longitude,
-            distanceKm: input.distanceKm,
-            polylineJson: JSON.stringify(input.polyline ?? []),
-            estimatedMinutes: input.estimatedMinutes ?? null,
-            isSimulation: input.isSimulation ?? false,
-          },
+          data: routeCreateData(id, input),
         }),
       'Failed to create route',
     );
     return toRoute(row as unknown as Record<string, unknown>);
+  }
+
+  /** Route row and its success event commit or roll back as one unit. */
+  async createRouteWithEvent(
+    input: CreateRouteInput,
+    eventFor: (route: RouteRecord) => SystemEventEnvelope,
+  ): Promise<RouteRecord> {
+    if (!isValidCoordinate(input.origin) || !isValidCoordinate(input.destination)) {
+      throw AppError.validation('Route endpoints are out of range.');
+    }
+    const id = createId('RTE');
+    return guardDatabase(
+      async () =>
+        withTransaction(this.db, async (tx) => {
+          const row = await tx.route.create({ data: routeCreateData(id, input) });
+          const route = toRoute(row as unknown as Record<string, unknown>);
+          await this.events.recordInTransaction(tx as never, eventFor(route));
+          return route;
+        }),
+      'Failed to create route and event',
+    );
   }
 
   async updateProgress(input: {
@@ -333,6 +450,67 @@ export class RouteRepository {
     return toRoute(row as unknown as Record<string, unknown>);
   }
 
+  /**
+   * Replaces an established route's geometry/ETA in place and records the
+   * recalculation event in the same transaction. Route identity (id, emergency,
+   * ambulance, hospital, leg labels) is preserved; only provider output fields
+   * change and `recalculationCount` increments. The event commits only with
+   * the replacement write.
+   */
+  async replaceRouteWithEvent(
+    routeId: string,
+    update: {
+      distanceKm: number;
+      polyline?: Array<[number, number]>;
+      estimatedMinutes?: number | null;
+      provider?: string;
+      isLiveTraffic?: boolean;
+      trafficFactor?: number | null;
+      alternatives?: unknown[];
+      selectionReason?: Record<string, unknown> | null;
+    },
+    eventFor: (
+      route: RouteRecord,
+      previous: { distanceKm: number; estimatedMinutes: number | null },
+    ) => SystemEventEnvelope,
+  ): Promise<RouteRecord> {
+    return guardDatabase(
+      async () =>
+        withTransaction(this.db, async (tx) => {
+          const current = await tx.route.findUnique({ where: { id: routeId } });
+          if (!current) throw AppError.notFound('Route', routeId);
+          const previous = {
+            distanceKm: Number(current.distanceKm),
+            estimatedMinutes:
+              current.estimatedMinutes == null ? null : Number(current.estimatedMinutes),
+          };
+          const data: Record<string, unknown> = {
+            distanceKm: update.distanceKm,
+            recalculationCount: { increment: 1 },
+          };
+          if (update.polyline !== undefined) data.polylineJson = JSON.stringify(update.polyline);
+          if (update.estimatedMinutes !== undefined) data.estimatedMinutes = update.estimatedMinutes;
+          if (update.provider !== undefined) data.provider = update.provider;
+          if (update.isLiveTraffic !== undefined) data.isLiveTraffic = update.isLiveTraffic;
+          if (update.trafficFactor !== undefined) data.trafficFactor = update.trafficFactor;
+          if (update.alternatives !== undefined) {
+            data.alternativesJson = JSON.stringify(update.alternatives);
+          }
+          if (update.selectionReason !== undefined) {
+            data.selectionReasonJson = JSON.stringify(update.selectionReason ?? {});
+          }
+          const updated = await tx.route.update({ where: { id: routeId }, data });
+          const route = toRoute(updated as unknown as Record<string, unknown>);
+          await this.events.recordInTransaction(
+            tx as never,
+            eventFor(route, previous),
+          );
+          return route;
+        }),
+      'Failed to replace route',
+    );
+  }
+
   async routesForEmergency(emergencyId: string): Promise<RouteRecord[]> {
     return guardDatabase(async () => {
       const rows = await this.db.route.findMany({
@@ -343,39 +521,76 @@ export class RouteRepository {
     }, 'Failed to list routes');
   }
 
-  async activateCorridor(input: {
-    emergencyId: string;
-    ambulanceId: string;
-    hospitalId: string;
-    fromLabel: string;
-    toLabel: string;
-    estimatedMinutes: number;
-    isSimulation?: boolean;
-  }): Promise<{ id: string; isActive: boolean }> {
-    const id = createId('COR');
-    await guardDatabase(
+  async findById(id: string): Promise<RouteRecord | null> {
+    return guardDatabase(async () => {
+      const row = await this.db.route.findUnique({ where: { id } });
+      return row ? toRoute(row as unknown as Record<string, unknown>) : null;
+    }, 'Failed to read route');
+  }
+
+  async requireById(id: string): Promise<RouteRecord> {
+    const route = await this.findById(id);
+    if (!route) throw AppError.notFound('Route', id);
+    return route;
+  }
+
+  /**
+   * Activates (or re-activates) the emergency corridor.
+   *
+   * Idempotent: when an `ACTIVE` corridor already exists for the emergency, no
+   * write and **no event** occur, so a retried or duplicated activation cannot
+   * append a second `CORRIDOR_ACTIVATED`. The row and its event are written in
+   * one transaction, so a failed write can never emit a success event.
+   */
+  async activateCorridor(input: CorridorActivationInput): Promise<CorridorActivationResult> {
+    const geofenceJson = JSON.stringify(
+      (input.geofence ?? []).map((point) => [point.latitude, point.longitude]),
+    );
+    const roadUsersJson = JSON.stringify(input.roadUsers ?? []);
+    const signalsJson = JSON.stringify(input.signals ?? []);
+    const priorityMode = input.priorityMode ?? 'SIMULATED';
+    const radiusM = input.radiusM ?? 150;
+
+    return guardDatabase(
       async () =>
         withTransaction(this.db, async (tx) => {
-          await tx.corridor.upsert({
+          const existing = await tx.corridor.findUnique({
             where: { emergencyId: input.emergencyId },
-            create: {
-              id,
-              emergencyId: input.emergencyId,
-              ambulanceId: input.ambulanceId,
-              hospitalId: input.hospitalId,
-              fromLabel: input.fromLabel,
-              toLabel: input.toLabel,
-              estimatedMinutes: input.estimatedMinutes,
-              isSimulation: input.isSimulation ?? false,
-            },
-            update: { isActive: true, releasedAt: null, activatedAt: new Date() },
           });
+          if (existing && existing.isActive && existing.status === 'ACTIVE') {
+            return { id: existing.id, status: existing.status, isActive: true, activated: false };
+          }
+
+          const now = new Date();
+          const data = {
+            ambulanceId: input.ambulanceId,
+            hospitalId: input.hospitalId,
+            fromLabel: input.fromLabel,
+            toLabel: input.toLabel,
+            estimatedMinutes: input.estimatedMinutes,
+            isActive: true,
+            status: 'ACTIVE',
+            priorityMode,
+            radiusM,
+            geofenceJson,
+            roadUsersJson,
+            signalsJson,
+            isSimulation: input.isSimulation ?? false,
+            activatedAt: now,
+            releasedAt: null,
+          };
+          const row = existing
+            ? await tx.corridor.update({ where: { emergencyId: input.emergencyId }, data })
+            : await tx.corridor.create({
+                data: { id: createId('COR'), emergencyId: input.emergencyId, ...data },
+              });
+
           await this.events.recordInTransaction(
             tx as never,
             defineEvent('CORRIDOR_ACTIVATED', {
               emergencyId: input.emergencyId,
               entityType: 'corridor',
-              entityId: input.emergencyId,
+              entityId: row.id,
               payload: {
                 emergencyId: input.emergencyId,
                 ambulanceId: input.ambulanceId,
@@ -386,22 +601,53 @@ export class RouteRepository {
               },
             }),
           );
+          return { id: row.id, status: 'ACTIVE', isActive: true, activated: true };
         }),
       'Failed to activate corridor',
     );
-    return { id, isActive: true };
   }
 
-  async releaseCorridor(emergencyId: string): Promise<void> {
-    await guardDatabase(
-      async () => {
-        await this.db.corridor.updateMany({
-          where: { emergencyId, isActive: true },
-          data: { isActive: false, releasedAt: new Date() },
-        });
-      },
+  /**
+   * Releases the emergency corridor.
+   *
+   * Idempotent: releasing when no corridor is active is a no-op that emits no
+   * event. The state change and its `CORRIDOR_RELEASED` event share a
+   * transaction, so a rolled-back release cannot announce itself.
+   */
+  async releaseCorridor(emergencyId: string, reason = 'RELEASED'): Promise<CorridorReleaseResult> {
+    return guardDatabase(
+      async () =>
+        withTransaction(this.db, async (tx) => {
+          const existing = await tx.corridor.findUnique({ where: { emergencyId } });
+          if (!existing || !existing.isActive) return { released: false };
+
+          const now = new Date();
+          const durationMs = Math.max(0, now.getTime() - existing.activatedAt.getTime());
+          await tx.corridor.update({
+            where: { emergencyId },
+            data: { isActive: false, status: 'RELEASED', releasedAt: now },
+          });
+          await this.events.recordInTransaction(
+            tx as never,
+            defineEvent('CORRIDOR_RELEASED', {
+              emergencyId,
+              entityType: 'corridor',
+              entityId: existing.id,
+              payload: { corridorId: existing.id, emergencyId, durationMs, reason },
+            }),
+          );
+          return { released: true };
+        }),
       'Failed to release corridor',
     );
+  }
+
+  /** Full persisted corridor state for an emergency, or null. */
+  async getCorridor(emergencyId: string): Promise<CorridorRecord | null> {
+    return guardDatabase(async () => {
+      const row = await this.db.corridor.findUnique({ where: { emergencyId } });
+      return row ? toCorridor(row as unknown as Record<string, unknown>) : null;
+    }, 'Failed to read corridor');
   }
 
   async activeCorridorFor(emergencyId: string): Promise<{ id: string; estimatedMinutes: number } | null> {
@@ -431,5 +677,56 @@ function toRoute(row: Record<string, unknown>): RouteRecord {
     status: String(row.status),
     estimatedMinutes: row.estimatedMinutes == null ? null : Number(row.estimatedMinutes),
     isSimulation: Boolean(row.isSimulation),
+    provider: String(row.provider ?? 'mock'),
+    isLiveTraffic: Boolean(row.isLiveTraffic),
+    trafficFactor: row.trafficFactor == null ? null : Number(row.trafficFactor),
+    alternatives: parseJsonArray(row.alternativesJson),
+    selectionReason: parseJsonObject(row.selectionReasonJson),
+    recalculationCount: Number(row.recalculationCount ?? 0),
   };
+}
+
+function toCorridor(row: Record<string, unknown>): CorridorRecord {
+  return {
+    id: String(row.id),
+    emergencyId: String(row.emergencyId),
+    ambulanceId: String(row.ambulanceId),
+    hospitalId: String(row.hospitalId),
+    fromLabel: String(row.fromLabel),
+    toLabel: String(row.toLabel),
+    estimatedMinutes: Number(row.estimatedMinutes),
+    isActive: Boolean(row.isActive),
+    activatedAt: new Date(row.activatedAt as string).toISOString(),
+    releasedAt: row.releasedAt == null ? null : new Date(row.releasedAt as string).toISOString(),
+    isSimulation: Boolean(row.isSimulation),
+    status: String(row.status),
+    priorityMode: String(row.priorityMode),
+    radiusM: Number(row.radiusM),
+    geofence: parseJsonArray(row.geofenceJson) as Array<[number, number]>,
+    roadUsers: parseJsonArray(row.roadUsersJson),
+    signals: parseJsonArray(row.signalsJson),
+    renegotiationCount: Number(row.renegotiationCount ?? 0),
+  };
+}
+
+function parseJsonArray(value: unknown): unknown[] {
+  if (value == null) return [];
+  try {
+    const parsed = JSON.parse(String(value));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseJsonObject(value: unknown): Record<string, unknown> | null {
+  if (value == null) return null;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
 }

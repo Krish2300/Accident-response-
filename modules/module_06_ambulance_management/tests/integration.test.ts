@@ -1,41 +1,24 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { createModule11, type Module11 } from '@resus/data';
 import { Module6 } from '../src/module.js';
+import { createIsolatedTestDatabase, type IsolatedTestDatabase } from '../../../tests/helpers/isolatedTestDatabase.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../../');
 const prismaDir = resolve(repoRoot, 'modules/module_11_database_event_system/prisma');
 const schemaPath = resolve(prismaDir, 'schema.prisma');
-const prismaCli = resolve(repoRoot, 'node_modules/prisma/build/index.js');
-const devDbPath = resolve(prismaDir, 'dev.db');
-const dbPath = resolve(prismaDir, 'test-module6.db');
-const dbUrl = `file:${dbPath.replace(/\\/g, '/')}`;
-
-function removeDatabaseFiles(): void {
-  for (const suffix of ['', '-journal', '-wal', '-shm']) {
-    const target = `${dbPath}${suffix}`;
-    if (existsSync(target)) rmSync(target, { force: true });
-  }
-}
-
 describe('Module 6 integration', () => {
   let db: PrismaClient;
   let module11: Module11;
   let module6: Module6;
+  let testDatabase: IsolatedTestDatabase;
 
   beforeAll(async () => {
-    removeDatabaseFiles();
-    process.env.DATABASE_URL = dbUrl;
-    execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schemaPath], {
-      cwd: repoRoot,
-      env: { ...process.env, DATABASE_URL: dbUrl },
-      stdio: 'pipe',
-    });
+    testDatabase = await createIsolatedTestDatabase({ repoRoot, schemaPath });
+    const dbUrl = testDatabase.databaseUrl;
     db = new PrismaClient({ datasources: { db: { url: dbUrl } } });
     module11 = createModule11({ db, ownsClient: false });
     module6 = new Module6({ ambulances: module11.ambulances, events: module11.eventPublisher });
@@ -43,7 +26,7 @@ describe('Module 6 integration', () => {
 
   afterAll(async () => {
     await db?.$disconnect();
-    removeDatabaseFiles();
+    testDatabase?.cleanup();
   });
 
   it('registers ambulance and assigns it', async () => {

@@ -1,6 +1,4 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
@@ -11,6 +9,7 @@ import { Module12 } from '@resus/analytics';
 import { RouteTable, type AuthContext, type RouteDefinition, isAppError } from '@resus/core';
 import { registerRoutes } from '../apps/server/src/http/routeAdapter.js';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { createIsolatedTestDatabase, type IsolatedTestDatabase } from './helpers/isolatedTestDatabase.js';
 
 /**
  * Driver GPS end-to-end integration test.
@@ -29,26 +28,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
 const prismaDir = resolve(repoRoot, 'modules/module_11_database_event_system/prisma');
 const schemaPath = resolve(prismaDir, 'schema.prisma');
-const prismaCli = resolve(repoRoot, 'node_modules/prisma/build/index.js');
-const devDbPath = resolve(prismaDir, 'dev.db');
-const dbPath = resolve(prismaDir, 'test-driver-location.db');
-const dbUrl = `file:${dbPath.replace(/\\/g, '/')}`;
-
 const DRIVER_ID = 'USR_DRV_TEST';
 const OTHER_DRIVER_ID = 'USR_DRV_OTHER';
 const AMBULANCE_ID = 'AMB_DRV_TEST_001';
 const UNASSIGNED_AMBULANCE_ID = 'AMB_DRV_TEST_002';
 
-function removeDatabaseFiles(): void {
-  for (const suffix of ['', '-journal', '-wal', '-shm']) {
-    const target = `${dbPath}${suffix}`;
-    if (existsSync(target)) rmSync(target, { force: true });
-  }
-}
-
 let db: PrismaClient;
 let module11: Module11;
 let app: FastifyInstance;
+let testDatabase: IsolatedTestDatabase;
 
 /** The identity the adapter resolves for each simulated bearer token. */
 const identities: Record<string, AuthContext> = {
@@ -59,24 +47,9 @@ const identities: Record<string, AuthContext> = {
 };
 
 beforeAll(async () => {
-  removeDatabaseFiles();
-  process.env.DATABASE_URL = dbUrl;
-
-  // Invoke the Prisma CLI through node directly: `npx` is not a resolvable bare
-  // binary on Windows.
-  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schemaPath], {
-    cwd: repoRoot,
-    env: { ...process.env, DATABASE_URL: dbUrl },
-    stdio: 'pipe',
-  });
-
+  testDatabase = await createIsolatedTestDatabase({ repoRoot, schemaPath });
+  const dbUrl = testDatabase.databaseUrl;
   db = new PrismaClient({ datasources: { db: { url: dbUrl } } });
-
-  const probe = await db.$queryRawUnsafe<Array<{ name: string; file: string }>>('PRAGMA database_list');
-  const target = probe.find((row) => row.name === 'main')?.file ?? '';
-  if (target && resolve(target) === resolve(devDbPath)) {
-    throw new Error(`Refusing to run: resolved to the development database (${devDbPath}).`);
-  }
 
   module11 = createModule11({ db, ownsClient: false });
 
@@ -94,7 +67,15 @@ beforeAll(async () => {
   // one assigned to nobody.
   await db.ambulance.createMany({
     data: [
-      { id: AMBULANCE_ID, vehicleNumber: 'AMBDRV001', isSimulation: false, assignedDriverId: DRIVER_ID },
+      {
+        id: AMBULANCE_ID,
+        vehicleNumber: 'AMBDRV001',
+        isSimulation: false,
+        assignedDriverId: DRIVER_ID,
+        latitude: 12.9716,
+        longitude: 77.5946,
+        lastLocationUpdate: new Date(),
+      },
       { id: UNASSIGNED_AMBULANCE_ID, vehicleNumber: 'AMBDRV002', isSimulation: false },
     ],
   });
@@ -132,12 +113,30 @@ beforeAll(async () => {
   expect(registered.modules).toContain('module_12');
   expect(app.hasRoute({ method: 'POST', url: '/api/ambulances/:id/location' })).toBe(true);
   expect(app.hasRoute({ method: 'GET', url: '/api/dashboard/live' })).toBe(true);
+
+  // Driver ownership is only active when an assignment record exists; an
+  // assignedDriverId alone is deliberately insufficient authorization.
+  const emergency = await module11.emergencies.create({
+    incidentType: 'TRAUMA',
+    severity: 'MEDIUM',
+    latitude: bengaluru.latitude,
+    longitude: bengaluru.longitude,
+    isSimulation: false,
+  });
+  const assignment = await app.inject({
+    method: 'POST',
+    url: '/api/ambulances/assign',
+    headers: { authorization: 'Bearer token-dispatcher' },
+    payload: { emergencyId: emergency.id, ...bengaluru },
+  });
+  expect(assignment.statusCode).toBe(200);
+  expect(assignment.json().ambulanceId).toBe(AMBULANCE_ID);
 }, 180000);
 
 afterAll(async () => {
   await app?.close();
   await db?.$disconnect();
-  removeDatabaseFiles();
+  testDatabase?.cleanup();
 });
 
 const bengaluru = { latitude: 12.9716, longitude: 77.5946 };
@@ -363,7 +362,7 @@ describe('GET /api/drivers/me/assignment', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ assigned: false, ambulance: null });
+    expect(response.json()).toEqual({ assigned: false, ambulance: null, assignment: null });
   });
 
   it('requires authentication', async () => {

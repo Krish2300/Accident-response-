@@ -53,6 +53,7 @@ const utteranceSchema = z.object({
 });
 
 const paramsSchema = z.object({ id: z.string().min(1) });
+const timingMarkerSchema = z.object({ marker: z.enum(['speech-start', 'speech-end']) });
 
 // The transport is reported via `service.transportStatus()` rather than injected
 // here, so the route table cannot be built for a transport other than the one the
@@ -84,6 +85,21 @@ export function createModule1Routes(service: CallService): RouteDefinition<any>[
         const { id } = request.params as { id: string };
         const reason = (request.body as { reason?: string } | undefined)?.reason;
         reply.send(await service.close(id, reason ?? 'Call ended.'));
+      },
+    },
+    {
+      method: 'POST',
+      url: '/calls/:id/timing-markers',
+      module: 'module_01',
+      summary: 'Record a server-timestamped marker for an active synthetic AudioSocket call',
+      auth: { roles: ['CALL_CENTRE', 'OPERATOR', 'ADMIN'] },
+      params: paramsSchema,
+      body: timingMarkerSchema,
+      handler: async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const { marker } = request.body as z.infer<typeof timingMarkerSchema>;
+        const receipt = await service.markSyntheticSpeechTiming(id, marker);
+        reply.status(receipt.accepted ? 200 : 422).send(receipt);
       },
     },
     {

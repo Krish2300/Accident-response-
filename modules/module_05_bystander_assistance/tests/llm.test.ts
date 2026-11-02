@@ -326,6 +326,119 @@ describe('heuristic fallback', () => {
     expect(result.entities.responsive).toBe('NO');
   });
 
+  it('extracts caller_location from an explicit "I am at X" statement', async () => {
+    for (const [report, expected] of [
+      ['I am at twelve main street', 'twelve main street'],
+      ["I'm at twelve main street the ambulance can come here", 'twelve main street the ambulance can come here'],
+      ['the address is twelve main street', 'twelve main street'],
+      ['we are currently at 45 park avenue', '45 park avenue'],
+      ['the address is: 9 river road', '9 river road'],
+    ] as const) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.caller_location, report).toBe(expected);
+    }
+  });
+
+  it('leaves caller_location absent for vague or missing locations', async () => {
+    // "here" and "there" give the dispatcher no more information than a phone
+    // call does; the protocol must ask again rather than dispatch to "here".
+    for (const report of [
+      'I am here',
+      'we are there',
+      'the patient is at home',
+      'he is somewhere nearby',
+      'help me please',
+    ]) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.caller_location, report).toBeNull();
+    }
+  });
+
+  it('never infers an exact location from an ambiguous utterance', async () => {
+    const result = await heuristic.extract('he collapsed in the kitchen earlier today');
+    expect(result.entities.caller_location).toBeNull();
+  });
+
+  it('extracts caller_location from the answer to the protocol location question', async () => {
+    // Regression: `confirm-location` asks "What is the exact location,
+    // including the building, floor or nearest landmark?", and a caller answers
+    // in that shape. That answer form was the one the extractor did not read,
+    // so the fact never arrived and the step looped with dispatch told nothing.
+    for (const [report, expected] of [
+      ['the exact location is building alpha, floor two, near the main gate', 'building alpha, floor two, near the main gate'],
+      ['exact location is twelve main street', 'twelve main street'],
+      ['the location is 9 river road', '9 river road'],
+      ['my location is building beta', 'building beta'],
+      ['location: 9 river road', '9 river road'],
+      ['their exact location is building gamma.', 'building gamma'],
+    ] as const) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.caller_location, report).toBe(expected);
+    }
+  });
+
+  it('never fills caller_location with a vague word or a non-answer', async () => {
+    // Direction of safety: the protocol must ask again rather than record
+    // "unknown" or "here" as the address an ambulance is sent to.
+    for (const report of [
+      'the exact location is here',
+      'the exact location is at home',
+      'the location is unknown',
+      'the location is not known',
+      'the exact location is not sure',
+      'I do not know the location yet',
+      'what is the exact location, including the building, floor or nearest landmark?',
+    ]) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.caller_location, report).toBeNull();
+    }
+  });
+
+  it('sets cpr_started to YES when the caller states they began compressions', async () => {
+    for (const report of [
+      'yes I am doing chest compressions now',
+      'I started chest compressions',
+      'I am doing cpr on him',
+      'I started compressions a minute ago',
+      'I am pushing on the chest',
+      'I began compressions',
+      'I am giving chest compressions',
+    ]) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.cpr_started, report).toBe('YES');
+    }
+  });
+
+  it('sets cpr_started to NO when the caller states they have not started', async () => {
+    // Negation is checked first: "I am not doing compressions" contains the
+    // positive phrase, so the negative must win.
+    for (const report of [
+      'I am not doing compressions',
+      'I have not started compressions',
+      "I haven't started compressions",
+      'I am not doing cpr',
+      "I haven't done compressions",
+    ]) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.cpr_started, report).toBe('NO');
+    }
+  });
+
+  it('leaves cpr_started UNKNOWN for questions or unrelated mentions', async () => {
+    // A question ("should I do compressions?") is not a statement that
+    // compressions have started; assuming YES would advance the protocol on
+    // an inference the caller never made.
+    for (const report of [
+      'should I do compressions?',
+      'do I need to start CPR?',
+      'he is unresponsive and not breathing',
+      'the address is twelve main street',
+    ]) {
+      const result = await heuristic.extract(report);
+      expect(result.entities.cpr_started, report).toBe('UNKNOWN');
+    }
+  });
+
   it('always flags classification for human review', async () => {
     const classification = await heuristic.classify('he collapsed');
     expect(classification.requires_human_review).toBe(true);

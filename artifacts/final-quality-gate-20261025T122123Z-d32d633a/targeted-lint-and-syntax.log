@@ -1,0 +1,6 @@
+npx eslint artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/run-experiment.mjs artifacts/offline-whisper-control-20261025-49381978e33047a587f90a6ac4e6c21e/run-control.mjs
+exit=0 (0 errors, 0 warnings)
+node --check artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/run-experiment.mjs
+exit=0
+node --check artifacts/offline-whisper-control-20261025-49381978e33047a587f90a6ac4e6c21e/run-control.mjs
+exit=0

@@ -1,0 +1,9 @@
+COMMAND: typecheck
+START_UTC: 2026-10-25T11:11:49.7165959Z
+
+> prehospital-emergency-survival-system@0.1.0 typecheck
+> tsc --noEmit -p tsconfig.json
+
+
+EXIT_CODE: 0
+END_UTC: 2026-10-25T11:12:03.7806781Z

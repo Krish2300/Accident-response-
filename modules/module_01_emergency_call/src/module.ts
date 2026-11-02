@@ -3,6 +3,36 @@ import { loadModule1Config, type Module1Config } from './config.js';
 import { CallService, type CallSessionStore, type EmergencyStore } from './callService.js';
 import { createModule1Routes } from './api/routes.js';
 import { LoopbackTelephonyProvider } from './telephony/loopbackProvider.js';
+import { AsteriskTelephonyProvider } from './telephony/asteriskProvider.js';
+
+/**
+ * Builds the telephony adapter for the configured provider.
+ *
+ * Kept out of the constructor so it is unit-testable: `asterisk` is the only
+ * branch that talks to an external system, and it must be possible to prove that
+ * asking for it produces `isLive: true` without a PBX present.
+ *
+ * `sip` and `webrtc` have no adapter in this build — selecting one already fails
+ * at config load unless `TRANSPORT_SIGNALLING_URL` is set, and until a real
+ * stack is added they fall through to loopback, exactly as before.
+ */
+export function createTelephonyProvider(config: Module1Config, logger: Logger): TelephonyProvider {
+  const asterisk = config.telephony.asterisk;
+  if (config.telephony.provider === 'asterisk' && asterisk) {
+    return new AsteriskTelephonyProvider({
+      context: asterisk.dialplan.context,
+      exten: asterisk.dialplan.exten,
+      priority: asterisk.dialplan.priority,
+      defaultEndpoint: asterisk.defaultEndpoint,
+      audioSocketAddress: `${asterisk.audioSocket.advertiseHost}:${asterisk.audioSocket.bindPort}`,
+      inboundChannelPrefix: 'PJSIP/',
+      inboundExtension: asterisk.inbound.extension,
+      ami: asterisk.ami,
+      logger,
+    });
+  }
+  return new LoopbackTelephonyProvider();
+}
 
 export interface Module1Deps {
   /** Implemented by Module 11. Module 1 never sees a Prisma client. */
@@ -36,7 +66,7 @@ export class Module1 {
   constructor(deps: Module1Deps) {
     this.config = deps.config ?? loadModule1Config();
     this.logger = deps.logger ?? noopLogger;
-    this.telephony = deps.telephony ?? new LoopbackTelephonyProvider();
+    this.telephony = deps.telephony ?? createTelephonyProvider(this.config, this.logger);
     this.calls = new CallService({
       config: this.config,
       telephony: this.telephony,

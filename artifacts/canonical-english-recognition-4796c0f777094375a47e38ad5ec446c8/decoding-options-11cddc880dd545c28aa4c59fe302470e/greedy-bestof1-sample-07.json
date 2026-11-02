@@ -1,0 +1,113 @@
+{
+	"systeminfo": "WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "base",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"text": {
+			"ctx": 448,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:-16:-47,-260",
+				"to": "00:00:30,000"
+			},
+			"offsets": {
+				"from": -1007260,
+				"to": 30000
+			},
+			"text": " I will stay here and answer your question.",
+			"tokens": [
+				{
+					"text": " I",
+					"id": 314,
+					"p": 0.856008,
+					"t_dtw": -1
+				},
+				{
+					"text": " will",
+					"id": 481,
+					"p": 0.940971,
+					"t_dtw": -1
+				},
+				{
+					"text": " stay",
+					"id": 2652,
+					"p": 0.782716,
+					"t_dtw": -1
+				},
+				{
+					"text": " here",
+					"id": 994,
+					"p": 0.996932,
+					"t_dtw": -1
+				},
+				{
+					"text": " and",
+					"id": 290,
+					"p": 0.827901,
+					"t_dtw": -1
+				},
+				{
+					"text": " answer",
+					"id": 3280,
+					"p": 0.991919,
+					"t_dtw": -1
+				},
+				{
+					"text": " your",
+					"id": 534,
+					"p": 0.987624,
+					"t_dtw": -1
+				},
+				{
+					"text": " question",
+					"id": 1808,
+					"p": 0.508261,
+					"t_dtw": -1
+				},
+				{
+					"text": ".",
+					"id": 13,
+					"p": 0.63419,
+					"t_dtw": -1
+				},
+				{
+					"text": "<|endoftext|>",
+					"timestamps": {
+						"from": "00:00:30,000",
+						"to": "00:00:30,000"
+					},
+					"offsets": {
+						"from": 30000,
+						"to": 30000
+					},
+					"id": 50256,
+					"p": 0.98084,
+					"t_dtw": -1
+				}
+			]
+		}
+	]
+}

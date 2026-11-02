@@ -21,6 +21,7 @@ import {
   ProtocolRepository,
 } from './repositories/protocolRepository.js';
 import { CallRepository, RouteRepository } from './repositories/callRepository.js';
+import { NotificationRepository } from './repositories/notificationRepository.js';
 import { UserRepository } from './repositories/userRepository.js';
 import { AnalyticsReadRepository } from './repositories/analyticsRepository.js';
 
@@ -46,6 +47,7 @@ export interface Module11 {
   outcomes: OutcomeRepository;
   calls: CallRepository;
   routes: RouteRepository;
+  notifications: NotificationRepository;
   users: UserRepository;
   analyticsRead: AnalyticsReadRepository;
   /** HTTP surface, as framework-agnostic route definitions for the server. */
@@ -55,6 +57,8 @@ export interface Module11 {
 
 export interface Module11Options {
   db: PrismaClient;
+  /** Trusted server environment used to label isolated test outcome records. */
+  nodeEnv?: 'development' | 'test' | 'production';
   realtime?: RealtimePublisherPort;
   logger?: Logger;
   /** Dispose the Prisma client on shutdown. Off for tests that reuse the client. */
@@ -74,17 +78,18 @@ export function createModule11(options: Module11Options): Module11 {
     events,
     eventPublisher: events,
     eventQuery: events,
-    emergencies: new EmergencyRepository(db, events),
+    emergencies: new EmergencyRepository(db, events, options.nodeEnv),
     ambulances: new AmbulanceRepository(db, events),
-    hospitals: new HospitalRepository(db),
+    hospitals: new HospitalRepository(db, events),
     protocols: new ProtocolRepository(db, events, logger),
     decisions: new DecisionRepository(db),
-    outcomes: new OutcomeRepository(db),
+    outcomes: new OutcomeRepository(db, events),
     calls: new CallRepository(db, events),
     routes: new RouteRepository(db, events),
+    notifications: new NotificationRepository(db, events),
     users: new UserRepository(db),
     analyticsRead: new AnalyticsReadRepository(db),
-    routeDefinitions: () => createModule11Routes(module),
+    routeDefinitions: () => createModule11Routes(module, { nodeEnv: options.nodeEnv }),
     dispose: async () => {
       if (options.ownsClient !== false) await db.$disconnect();
     },

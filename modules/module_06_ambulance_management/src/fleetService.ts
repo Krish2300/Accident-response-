@@ -5,7 +5,6 @@ import {
   AppError,
   ErrorCode,
   type Logger,
-  createId,
   defineEvent,
   haversineKm,
   isValidCoordinate,
@@ -50,6 +49,17 @@ export interface AssignmentRequest {
   overrideReason?: string | null;
   consideredCandidates: number;
   decidedByUserId?: string | null;
+  offerTtlMs?: number;
+}
+
+const DISPATCH_MANAGED_STATUSES = new Set(['DISPATCHED', 'EN_ROUTE']);
+
+function rejectDispatchManagedStatus(status: string | undefined): void {
+  if (status && DISPATCH_MANAGED_STATUSES.has(status)) {
+    throw AppError.validation(
+      `Ambulance status '${status}' can only be set through the explicit dispatch operation.`,
+    );
+  }
 }
 
 export class FleetService {
@@ -66,6 +76,7 @@ export class FleetService {
   }
 
   async registerAmbulance(input: AmbulanceCreateInput): Promise<Ambulance> {
+    rejectDispatchManagedStatus(input.status);
     const ambulance = await this.ambulances.create(input);
     await this.events.record(
       defineEvent('AMBULANCE_CREATED', {
@@ -90,6 +101,7 @@ export class FleetService {
   }
 
   async updateAmbulance(id: string, patch: AmbulancePatch): Promise<Ambulance> {
+    rejectDispatchManagedStatus(patch.status);
     const previous = await this.ambulances.findById(id);
     const updated = await this.ambulances.update(id, patch);
     const changed: string[] = [];
@@ -213,52 +225,22 @@ export class FleetService {
       overrideReason: request.overrideReason ?? null,
       consideredCandidates: request.consideredCandidates,
       decidedByUserId: request.decidedByUserId,
+      offerTtlMs: request.offerTtlMs ?? this.config.assignment.offerTtlMs,
     });
-
-    await this.ambulances.update(request.ambulanceId, {
-      status: 'DISPATCHED',
-      currentEmergencyId: request.emergencyId,
-      assignedAt: new Date(),
-    });
-
-    await this.events.record(
-      defineEvent('AMBULANCE_ASSIGNMENT_REQUESTED', {
-        emergencyId: request.emergencyId,
-        entityType: 'ambulance',
-        entityId: request.ambulanceId,
-        payload: {
-          emergencyId: request.emergencyId,
-          candidatesEvaluated: request.consideredCandidates,
-          requiredEquipment: [],
-          requiredCapabilities: [],
-        },
-      }),
-    );
-
-    await this.events.record(
-      defineEvent('AMBULANCE_ASSIGNED', {
-        emergencyId: request.emergencyId,
-        entityType: 'ambulance',
-        entityId: request.ambulanceId,
-        payload: {
-          ambulanceId: request.ambulanceId,
-          assignmentId: assignment.id,
-          emergencyId: request.emergencyId,
-          distanceKm: assignment.distanceKm,
-          estimatedResponseTimeMin: assignment.estimatedResponseTimeMin,
-          matchingFactors: assignment.matchingFactors,
-          score: assignment.score,
-          source: assignment.source as any,
-          overrideReason: assignment.overrideReason,
-          consideredCandidates: request.consideredCandidates,
-        },
-      }),
-    );
 
     return assignment;
   }
 
-  async dispatchAmbulance(ambulanceId: string, emergencyId: string): Promise<void> {
+  async expireDueOffers(): Promise<number> {
+    if (typeof this.ambulances.expireDueOffers !== 'function') return 0;
+    return this.ambulances.expireDueOffers();
+  }
+
+  async dispatchAmbulance(ambulanceId: string, emergencyId: string, dispatchedByUserId?: string | null): Promise<void> {
+    if (typeof this.ambulances.dispatchAssignment === 'function') {
+      await this.ambulances.dispatchAssignment({ ambulanceId, emergencyId, dispatchedByUserId });
+      return;
+    }
     const ambulance = await this.ambulances.requireById(ambulanceId);
     await this.ambulances.update(ambulanceId, {
       status: 'EN_ROUTE',
@@ -295,6 +277,17 @@ export class FleetService {
 
   async getAssignedAmbulanceForDriver(driverId: string): Promise<Ambulance | null> {
     return this.ambulances.getAssignedAmbulanceForDriver(driverId);
+  }
+  async getDriverAssignment(driverId: string) {
+    return this.ambulances.activeAssignmentForDriver(driverId);
+  }
+  async respondToDriverAssignment(input: {
+    assignmentId: string;
+    driverId: string;
+    decision: 'ACCEPT' | 'DECLINE';
+    reason?: string | null;
+  }) {
+    return this.ambulances.respondToAssignment(input);
   }
   async getAssignmentsForEmergency(emergencyId: string): Promise<AmbulanceAssignment[]> {
     return this.ambulances.assignmentsForEmergency(emergencyId);

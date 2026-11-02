@@ -33,6 +33,7 @@ import bcrypt from 'bcryptjs';
 import { createId, DATA_PROVENANCE } from '@resus/core';
 import { createModule11 } from '../module.js';
 import { getPrismaClient } from '../db/client.js';
+import { isLearningSampleSeedEnabled } from './learningSampleSeedPolicy.js';
 
 const db = getPrismaClient();
 const module11 = createModule11({ db, ownsClient: false });
@@ -434,23 +435,25 @@ async function seedHistory(): Promise<void> {
       notes: 'Seeded simulation outcome.',
     });
 
-    await module11.analyticsRead.insertLearningSample({
-      emergencyId: emergency.id,
-      hospitalId: hospital.id,
-      emergencyType: spec.incidentType,
-      severity: spec.severity,
-      responseTimeMin: responseMin,
-      ambulanceDistanceKm: 2 + rand() * 8,
-      hospitalDistanceKm: 3 + rand() * 10,
-      protocolUsed: spec.protocol,
-      escalationRequired: spec.severity === 'CRITICAL',
-      totalDurationMin: totalMin,
-      transportTimeMin: transportMin,
-      outcomeStatus: survived ? 'SURVIVED_TO_DISCHARGE' : 'DECEASED',
-      survivalToDischarge: survived,
-      features: { seeded: true },
-      provenance: DATA_PROVENANCE.SIMULATION,
-    });
+    if (isLearningSampleSeedEnabled(process.env.MODULE12_LEARNING_ENABLED)) {
+      await module11.analyticsRead.insertLearningSample({
+        emergencyId: emergency.id,
+        hospitalId: hospital.id,
+        emergencyType: spec.incidentType,
+        severity: spec.severity,
+        responseTimeMin: responseMin,
+        ambulanceDistanceKm: 2 + rand() * 8,
+        hospitalDistanceKm: 3 + rand() * 10,
+        protocolUsed: spec.protocol,
+        escalationRequired: spec.severity === 'CRITICAL',
+        totalDurationMin: totalMin,
+        transportTimeMin: transportMin,
+        outcomeStatus: survived ? 'SURVIVED_TO_DISCHARGE' : 'DECEASED',
+        survivalToDischarge: survived,
+        features: { seeded: true },
+        provenance: DATA_PROVENANCE.SIMULATION,
+      });
+    }
   }
 
   console.log(`[seed] created ${created.length} simulated historical emergencies with outcomes`);

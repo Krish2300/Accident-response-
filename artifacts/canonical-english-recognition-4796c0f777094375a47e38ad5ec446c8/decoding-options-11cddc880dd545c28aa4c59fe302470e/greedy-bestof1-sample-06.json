@@ -1,0 +1,107 @@
+{
+	"systeminfo": "WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "base",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"text": {
+			"ctx": 448,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:-16:-47,-260",
+				"to": "00:00:30,000"
+			},
+			"offsets": {
+				"from": -1007260,
+				"to": 30000
+			},
+			"text": " Please send the information to the operator.",
+			"tokens": [
+				{
+					"text": " Please",
+					"id": 4222,
+					"p": 0.46266,
+					"t_dtw": -1
+				},
+				{
+					"text": " send",
+					"id": 3758,
+					"p": 0.793152,
+					"t_dtw": -1
+				},
+				{
+					"text": " the",
+					"id": 262,
+					"p": 0.778554,
+					"t_dtw": -1
+				},
+				{
+					"text": " information",
+					"id": 1321,
+					"p": 0.982902,
+					"t_dtw": -1
+				},
+				{
+					"text": " to",
+					"id": 284,
+					"p": 0.990046,
+					"t_dtw": -1
+				},
+				{
+					"text": " the",
+					"id": 262,
+					"p": 0.984585,
+					"t_dtw": -1
+				},
+				{
+					"text": " operator",
+					"id": 10088,
+					"p": 0.89851,
+					"t_dtw": -1
+				},
+				{
+					"text": ".",
+					"id": 13,
+					"p": 0.75623,
+					"t_dtw": -1
+				},
+				{
+					"text": "<|endoftext|>",
+					"timestamps": {
+						"from": "00:00:30,000",
+						"to": "00:00:30,000"
+					},
+					"offsets": {
+						"from": 30000,
+						"to": 30000
+					},
+					"id": 50256,
+					"p": 0.986937,
+					"t_dtw": -1
+				}
+			]
+		}
+	]
+}

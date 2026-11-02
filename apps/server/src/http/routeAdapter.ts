@@ -1,6 +1,5 @@
 import {
   AppError,
-  ErrorCode,
   isAppError,
   type AuthContext,
   type HttpReply,

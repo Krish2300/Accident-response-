@@ -1,4 +1,4 @@
-import type { AnalyticsReadRepository, EmergencyDurationRow, LiveAmbulanceRow, LiveEmergencyRow, LearningSampleRow } from '@resus/module_11_database_event_system';
+import type { AnalyticsReadRepository, EmergencyDurationRow, LearningSampleRow } from '@resus/module_11_database_event_system';
 import { type Logger, noopLogger } from '@resus/core';
 import type { Module12Config } from '../config.js';
 

@@ -1,0 +1,16 @@
+{
+  "name": "@resus/module_08_route_optimization",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 8 — route optimization. Plans the response leg (ambulance to scene) and transport leg (scene to hospital) using a pluggable routing provider, records each route and its provenance through module 11, and emits ROUTE_GENERATED / ROUTE_FAILED. The default provider is deterministic and labelled as a non-live estimate; a real OSRM provider is available but off by default.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src"
+  ],
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

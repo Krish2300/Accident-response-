@@ -1,0 +1,143 @@
+{
+	"systeminfo": "WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "base",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"text": {
+			"ctx": 448,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:00:00,000",
+				"to": "00:00:30,000"
+			},
+			"offsets": {
+				"from": 0,
+				"to": 30000
+			},
+			"text": " The house number is 24.",
+			"tokens": [
+				{
+					"text": " The",
+					"timestamps": {
+						"from": "00:00:00,010",
+						"to": "00:00:01,970"
+					},
+					"offsets": {
+						"from": 10,
+						"to": 1970
+					},
+					"id": 383,
+					"p": 0.470305,
+					"t_dtw": -1
+				},
+				{
+					"text": " house",
+					"timestamps": {
+						"from": "00:00:02,380",
+						"to": "00:00:02,380"
+					},
+					"offsets": {
+						"from": 2380,
+						"to": 2380
+					},
+					"id": 2156,
+					"p": 0.766134,
+					"t_dtw": -1
+				},
+				{
+					"text": " number",
+					"timestamps": {
+						"from": "00:00:02,380",
+						"to": "00:00:02,380"
+					},
+					"offsets": {
+						"from": 2380,
+						"to": 2380
+					},
+					"id": 1271,
+					"p": 0.979878,
+					"t_dtw": -1
+				},
+				{
+					"text": " is",
+					"timestamps": {
+						"from": "00:00:02,380",
+						"to": "00:00:02,380"
+					},
+					"offsets": {
+						"from": 2380,
+						"to": 2380
+					},
+					"id": 318,
+					"p": 0.948532,
+					"t_dtw": -1
+				},
+				{
+					"text": " 24",
+					"timestamps": {
+						"from": "00:00:02,380",
+						"to": "00:00:02,380"
+					},
+					"offsets": {
+						"from": 2380,
+						"to": 2380
+					},
+					"id": 1987,
+					"p": 0.951711,
+					"t_dtw": -1
+				},
+				{
+					"text": ".",
+					"timestamps": {
+						"from": "00:00:02,380",
+						"to": "00:00:02,380"
+					},
+					"offsets": {
+						"from": 2380,
+						"to": 2380
+					},
+					"id": 13,
+					"p": 0.488732,
+					"t_dtw": -1
+				},
+				{
+					"text": "<|endoftext|>",
+					"timestamps": {
+						"from": "00:00:30,000",
+						"to": "00:00:30,000"
+					},
+					"offsets": {
+						"from": 30000,
+						"to": 30000
+					},
+					"id": 50256,
+					"p": 0.977921,
+					"t_dtw": -1
+				}
+			]
+		}
+	]
+}

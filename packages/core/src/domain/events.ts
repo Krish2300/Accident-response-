@@ -15,6 +15,8 @@ export const SYSTEM_EVENT_TYPES = [
   'TRANSCRIPT_UPDATED',
   'EMERGENCY_CLASSIFIED',
   'EMERGENCY_STATUS_CHANGED',
+  'EMERGENCY_LOCATION_CANDIDATE',
+  'EMERGENCY_LOCATION_CONFIRMED',
 
   // module 5 - protocol engine
   'PROTOCOL_STARTED',
@@ -31,8 +33,12 @@ export const SYSTEM_EVENT_TYPES = [
   'AMBULANCE_CREATED',
   'AMBULANCE_UPDATED',
   'AMBULANCE_ASSIGNMENT_REQUESTED',
+  'AMBULANCE_ASSIGNMENT_OFFERED',
   'AMBULANCE_ASSIGNED',
   'AMBULANCE_ASSIGNMENT_CANCELLED',
+  'AMBULANCE_ASSIGNMENT_ACCEPTED',
+  'AMBULANCE_ASSIGNMENT_DECLINED',
+  'AMBULANCE_ASSIGNMENT_EXPIRED',
   'AMBULANCE_DISPATCHED',
   'AMBULANCE_LOCATION_UPDATED',
   'AMBULANCE_STATUS_CHANGED',
@@ -45,6 +51,7 @@ export const SYSTEM_EVENT_TYPES = [
   // decision / outcome
   'DECISION_CREATED',
   'OUTCOME_RECORDED',
+  'OUTCOME_REVIEW_RECORDED',
   'CORRIDOR_ACTIVATED',
   'ROUTE_UPDATED',
 
@@ -95,12 +102,21 @@ export const SYSTEM_EVENT_TYPES = [
   'CORRIDOR_RENEGOTIATED',
   'CORRIDOR_RELEASED',
   'NOTIFICATION_SENT',
+  'SIMULATED_POLICE_NOTIFICATION_CREATED',
+  'SIMULATED_POLICE_NOTIFICATION_ACKNOWLEDGED',
+  'SIMULATED_POLICE_NOTIFICATION_SUPERSEDED',
+
+  // module 11 - outcome access grant lifecycle (audit)
+  'OUTCOME_GRANTED',
+  'OUTCOME_GRANT_REVOKED',
 ] as const;
 
 export type SystemEventType = (typeof SYSTEM_EVENT_TYPES)[number];
 
 export interface SystemEventEnvelope<T extends SystemEventType = SystemEventType> {
   type: T;
+  /** Optional stable persisted identifier for idempotent domain-event writes. */
+  eventId?: string;
   emergencyId?: string | null;
   entityType?: string | null;
   entityId?: string | null;
@@ -137,6 +153,32 @@ export interface EventPayloadMap {
     from: string;
     to: string;
     source: 'OPERATOR' | 'SYSTEM' | 'SIMULATION';
+  };
+  EMERGENCY_LOCATION_CANDIDATE: {
+    resolutionId: string;
+    callerLocationText: string;
+    attempt: number;
+    source: 'CALLER_STATED';
+    provider: string;
+    outcome: 'CANDIDATE' | 'AMBIGUOUS' | 'NOT_FOUND' | 'UNAVAILABLE' | 'INVALID_RESULT';
+    confidence: number | null;
+    candidateLatitude: number | null;
+    candidateLongitude: number | null;
+    isSimulation: boolean;
+  };
+  EMERGENCY_LOCATION_CONFIRMED: {
+    resolutionId: string;
+    callerLocationText: string;
+    source: 'CALLER_STATED' | 'OPERATOR_SUPPLIED';
+    provider: string;
+    confidence: number | null;
+    candidateLatitude: number | null;
+    candidateLongitude: number | null;
+    confirmedLatitude: number;
+    confirmedLongitude: number;
+    confirmedByUserId: string;
+    confirmedAt: string;
+    isSimulation: boolean;
   };
 
   PROTOCOL_STARTED: {
@@ -195,6 +237,14 @@ export interface EventPayloadMap {
     requiredEquipment: string[];
     requiredCapabilities: string[];
   };
+  AMBULANCE_ASSIGNMENT_OFFERED: {
+    ambulanceId: string;
+    assignmentId: string;
+    emergencyId: string;
+    offeredAt: string;
+    expiresAt: string;
+    isSimulation: boolean;
+  };
   AMBULANCE_ASSIGNED: {
     ambulanceId: string;
     assignmentId: string;
@@ -208,6 +258,26 @@ export interface EventPayloadMap {
     consideredCandidates: number;
   };
   AMBULANCE_ASSIGNMENT_CANCELLED: { assignmentId: string; reason: string };
+  AMBULANCE_ASSIGNMENT_ACCEPTED: {
+    assignmentId: string;
+    ambulanceId: string;
+    emergencyId: string;
+    acceptedAt: string;
+  };
+  AMBULANCE_ASSIGNMENT_DECLINED: {
+    assignmentId: string;
+    ambulanceId: string;
+    emergencyId: string;
+    declinedAt: string;
+    reason: string | null;
+  };
+  AMBULANCE_ASSIGNMENT_EXPIRED: {
+    assignmentId: string;
+    ambulanceId: string;
+    emergencyId: string;
+    expiredAt: string;
+    isSimulation: boolean;
+  };
   AMBULANCE_DISPATCHED: { ambulanceId: string; emergencyId: string };
   AMBULANCE_LOCATION_UPDATED: {
     ambulanceId: string;
@@ -223,15 +293,27 @@ export interface EventPayloadMap {
     from: AmbulanceStatus;
     to: AmbulanceStatus;
   };
-  AMBULANCE_ARRIVED_SCENE: { ambulanceId: string; emergencyId: string; responseTimeMin: number };
-  PATIENT_ONBOARD: { ambulanceId: string; emergencyId: string; hospitalId: string | null };
+  AMBULANCE_ARRIVED_SCENE: {
+    ambulanceId: string; emergencyId: string; responseTimeMin: number;
+    evidenceSource?: 'OPERATOR_REPORTED'; observedAt?: string; dataClassification?: 'OPERATIONAL' | 'SIMULATION' | 'TEST';
+  };
+  PATIENT_ONBOARD: {
+    ambulanceId: string; emergencyId: string; hospitalId: string | null;
+    evidenceSource?: 'OPERATOR_REPORTED'; observedAt?: string; dataClassification?: 'OPERATIONAL' | 'SIMULATION' | 'TEST';
+  };
   HOSPITAL_SELECTED: { hospitalId: string; emergencyId: string; distanceKm: number; reason: string };
-  AMBULANCE_ARRIVED_HOSPITAL: { ambulanceId: string; emergencyId: string; hospitalId: string };
+  AMBULANCE_ARRIVED_HOSPITAL: {
+    ambulanceId: string; emergencyId: string; hospitalId: string;
+    evidenceSource?: 'OPERATOR_REPORTED'; observedAt?: string; dataClassification?: 'OPERATIONAL' | 'SIMULATION' | 'TEST';
+  };
   EMERGENCY_COMPLETED: {
     emergencyId: string;
     totalDurationMin: number;
     status: string;
     isSimulation: boolean;
+    evidenceSource?: 'OPERATOR_REPORTED';
+    observedAt?: string;
+    dataClassification?: 'OPERATIONAL' | 'SIMULATION' | 'TEST';
   };
 
   DECISION_CREATED: {
@@ -244,10 +326,50 @@ export interface EventPayloadMap {
     confidence: number;
   };
   OUTCOME_RECORDED: {
+    contractVersion: 1;
     emergencyId: string;
-    outcomeId: string;
-    status: string;
+    outcomeRecordId: string;
+    category: string;
+    categoryVersion: string;
     provenance: DataProvenance;
+    dataClassification: 'OPERATIONAL' | 'SIMULATION' | 'TEST' | 'UNVERIFIED_LEGACY';
+    reviewStatus: 'PENDING';
+    observedAt: string | null;
+    recordedAt: string;
+    supersedesOutcomeId: string | null;
+    correctionReasonCode: string | null;
+  };
+  OUTCOME_REVIEW_RECORDED: {
+    contractVersion: 1;
+    emergencyId: string;
+    outcomeRecordId: string;
+    reviewRecordId: string;
+    decision: 'APPROVED' | 'REJECTED' | 'NEEDS_EVIDENCE';
+    reviewReasonCode: string | null;
+    eligibleForLearning: boolean;
+    eligibilityReasonCode: string;
+    reviewedAt: string;
+  };
+  OUTCOME_GRANTED: {
+    contractVersion: 1;
+    emergencyId: string;
+    grantId: string;
+    granteeUserId: string;
+    capability: 'SUBMIT' | 'REVIEW';
+    /** Distinguishes a brand-new grant from the reactivation of a revoked one. */
+    action: 'GRANTED' | 'REACTIVATED';
+    active: true;
+    /** Present only for reactivations; the instant the grant became active again. */
+    reactivatedAt: string | null;
+  };
+  OUTCOME_GRANT_REVOKED: {
+    contractVersion: 1;
+    emergencyId: string;
+    grantId: string;
+    granteeUserId: string;
+    capability: 'SUBMIT' | 'REVIEW';
+    revokedAt: string;
+    revokeReason: string | null;
   };
   CORRIDOR_ACTIVATED: {
     emergencyId: string;
@@ -477,6 +599,32 @@ verbatimProtocolText: boolean;
     provider: string;
     /** False when the notification was only recorded, not actually delivered. */
     delivered: boolean;
+  };
+  SIMULATED_POLICE_NOTIFICATION_CREATED: {
+    notificationId: string;
+    emergencyId: string;
+    ambulanceId: string;
+    routeId: string;
+    provider: 'MOCK_POLICE_CONTROL_ROOM';
+    createdAt: string;
+    routeIsSimulation: boolean;
+    simulation: true;
+    delivered: false;
+  };
+  SIMULATED_POLICE_NOTIFICATION_ACKNOWLEDGED: {
+    notificationId: string;
+    emergencyId: string;
+    routeId: string;
+    acknowledgedByUserId: string;
+    acknowledgedAt: string;
+    simulation: true;
+  };
+  SIMULATED_POLICE_NOTIFICATION_SUPERSEDED: {
+    notificationId: string;
+    emergencyId: string;
+    supersededByNotificationId: string;
+    supersededAt: string;
+    simulation: true;
   };
 }
 

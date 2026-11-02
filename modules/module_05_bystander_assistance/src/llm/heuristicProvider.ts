@@ -100,6 +100,165 @@ function breathingStatus(text: string, has: (...needles: string[]) => boolean): 
   return 'UNKNOWN';
 }
 
+/**
+ * Vague location words that are never an exact address for dispatch.
+ *
+ * "I am here" gives the ambulance no more information than "I called from a
+ * phone", so the fact stays absent rather than being filled with a word the
+ * dispatcher would have to interpret. The protocol asks again instead.
+ *
+ * The second group are *non-answers* to the protocol's own location question:
+ * "the exact location is unknown" says the location is not known, which is
+ * still not an address. Membership is tested against the whole captured
+ * candidate, never against words inside it, so a genuine address that happens
+ * to contain one of these words ("twelve main street the ambulance can come
+ * here") is kept.
+ */
+const VAGUE_LOCATION_WORDS = new Set([
+  'here',
+  'there',
+  'somewhere',
+  'anywhere',
+  'nearby',
+  'outside',
+  'inside',
+  'at home',
+  'home',
+  'this place',
+  'that place',
+  'the house',
+  'the building',
+  // Non-answers: the caller has said the location is not known.
+  'unknown',
+  'not known',
+  'not sure',
+  'not given',
+  'unclear',
+  'unsure',
+  'no idea',
+  'none',
+  'n/a',
+  "i don't know",
+  'i do not know',
+  "can't say",
+  'cannot say',
+]);
+
+/**
+ * Caller-stated location, extracted only from a clear pattern.
+ *
+ * The `confirm-location` step (and `call-emergency-services` in the arrest
+ * catalogue) gate on `caller_location exists`, so without this the protocol can
+ * never leave that step. Only an explicit statement produces a fact; vague
+ * words ("here", "there") and non-answers ("unknown") are never treated as an
+ * address — the engine asks again rather than dispatching to "here". The
+ * caller's own words are kept verbatim (trimmed), never normalised or guessed.
+ *
+ * Two families are read:
+ *
+ *   1. the caller volunteers a location: "I am at X", "the address is X";
+ *   2. the caller answers the protocol's own question — "What is the exact
+ *      location, including the building, floor or nearest landmark?" — with
+ *      "the exact location is X" or "location: X".
+ *
+ * Without the second family the answer to that very question is dropped: the
+ * fact never arrives, `confirm-location` loops and dispatch is never given an
+ * address. That is the defect seen on the live path (Stage D): the caller said
+ * "the exact location is building alpha, floor two, near the main gate" and no
+ * pattern matched, so the session stayed on `confirm-location`.
+ *
+ * The answer form is captured to the end of the sentence rather than to the
+ * first comma, so a comma-separated answer keeps its floor and landmark
+ * ("building alpha, floor two, near the main gate"), and is capped at 200
+ * characters.
+ *
+ * This reads *intended* phrasing only. When speech recognition mangles the
+ * words past these patterns (observed live: the sentence above transcribed as
+ * "... a Mac location in building out a floor to their main gate"), that
+ * remains a transcription failure and is reported as such; garbled text is
+ * never pattern-matched into an address here, because guessing a dispatch
+ * address is the one outcome worse than asking again.
+ */
+function callerLocation(text: string): string | null {
+  const patterns = [
+    /(?:i am|i'm|we are|we're)(?: currently)?\s+at\s+(.{3,}?)(?:[.!?]|,|;|$)/i,
+    /(?:the\s+)?address\s+(?:is\s*:|is|:)\s*(.{3,}?)(?:[.!?]|,|;|$)/i,
+    // The protocol's own question form: "the exact location is X".
+    /\b(?:(?:the|my|our|their)\s+)?(?:exact\s+)?location\s*(?:is\s*:|is|:)\s*(.{3,}?)(?:[.!?]|$)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (!match?.[1]) continue;
+    const candidate = match[1].trim();
+    if (candidate.length < 3) continue;
+    if (VAGUE_LOCATION_WORDS.has(candidate.toLowerCase())) continue;
+    return candidate.slice(0, 200);
+  }
+  return null;
+}
+
+/**
+ * Whether the caller has begun chest compressions.
+ *
+ * The `start-compressions` step gates on `cpr_started eq YES`, so without this
+ * the protocol can never advance into active CPR however many times the caller
+ * says they are pushing. Only an explicit statement is read: "I am doing chest
+ * compressions" is `YES`; "I have not started compressions" is `NO`; a
+ * question ("should I do compressions?") or an unrelated mention of CPR is
+ * `UNKNOWN` — the protocol asks again rather than assuming. Negation is
+ * checked first because "I am not doing compressions" contains the positive
+ * phrase.
+ */
+function cprStarted(text: string, has: (...needles: string[]) => boolean): Entities['cpr_started'] {
+  const negated = has(
+    'not doing compressions',
+    'not doing cpr',
+    'not started compressions',
+    'not started cpr',
+    "haven't started compressions",
+    "haven't started cpr",
+    'have not started compressions',
+    'have not started cpr',
+    "haven't done compressions",
+    "haven't done cpr",
+    'not done compressions',
+    'not done cpr',
+    'not pushing on the chest',
+    'not pushing on chest',
+    "i don't do compressions",
+    "i don't do cpr",
+  );
+  if (negated) return 'NO';
+
+  const positive = has(
+    'doing chest compressions',
+    'doing compressions',
+    'doing the compressions',
+    'doing cpr',
+    'started chest compressions',
+    'started compressions',
+    'started the compressions',
+    'started cpr',
+    'began chest compressions',
+    'began compressions',
+    'began cpr',
+    'begun chest compressions',
+    'begun compressions',
+    'begun cpr',
+    'pushing on the chest',
+    'pushing on chest',
+    'pushing down on the chest',
+    'pushing down on chest',
+    'giving chest compressions',
+    'giving compressions',
+    'giving cpr',
+    'gave cpr',
+  );
+  if (positive) return 'YES';
+
+  return 'UNKNOWN';
+}
+
 /** Statements that a scene is *not* safe; checked before any reassurance. */
 function sceneSafety(text: string, has: (...needles: string[]) => boolean): Entities['scene_safe'] {
   // Explicit statements that approach is impossible, e.g. "I can't reach him".
@@ -172,6 +331,8 @@ export class HeuristicProvider implements LLMService {
       scene_safe: sceneSafety(text, has),
       caller_with_patient: has("i'm with", 'i am with', 'im with', 'next to', 'beside') ? 'YES' : 'UNKNOWN',
       age_group: has('baby', 'infant') ? 'INFANT' : has('child', 'kid') ? 'CHILD' : 'UNKNOWN',
+      caller_location: callerLocation(text),
+      cpr_started: cprStarted(text, has),
       patient_count: null,
       mechanism: null,
       duration_minutes: null,

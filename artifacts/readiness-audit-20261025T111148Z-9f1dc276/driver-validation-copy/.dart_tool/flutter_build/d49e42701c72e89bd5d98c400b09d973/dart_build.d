@@ -1,0 +1,1 @@
+ F:\\minor\\apps\\driver\\.dart_tool\\flutter_build\\d49e42701c72e89bd5d98c400b09d973\\dart_build_result.json:  C:\\flutter_windows_3.41.2-stable\\flutter\\bin\\cache\\dart-sdk\\version F:\\minor\\apps\\driver\\.dart_tool\\package_config.json F:\\minor\\apps\\driver\\pubspec.yaml f:\\minor\\apps\\driver\\.dart_tool\\package_config.json

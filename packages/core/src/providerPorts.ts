@@ -136,6 +136,33 @@ export interface TranscriptionRequest {
   /** Raw audio or a reference to a captured buffer. */
   audio: Uint8Array;
   isFinal: boolean;
+  /** Enables content-free audio metrics for an explicitly synthetic test only. */
+  diagnosticScope?: 'synthetic-test';
+  /** Content-free VAD metadata for correlating one synthetic segment across stages. */
+  segmentDiagnostics?: AudioSegmentDiagnostics;
+}
+
+/** Metadata only: never contains PCM or recognized words. */
+export interface AudioSegmentDiagnostics {
+  segmentId: string;
+  /** Segment boundaries in the call-scoped monotonic clock used by timing markers. */
+  callRelativeStartMs: number;
+  callRelativeEndMs: number;
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  sampleCount: number;
+  boundaryReason: 'silence-hangover' | 'max-duration' | 'call-ended';
+  transcriptionOutcome: 'submitted' | 'dropped-too-short' | 'dropped-missing-session' | 'discarded-call-ended';
+  frameCount: number;
+  trailingSilenceFrameCount: number;
+  frameRmsMin: number;
+  frameRmsMean: number;
+  frameRmsMax: number;
+  frameRmsAboveThreshold: number;
+  framePeakMin: number;
+  framePeakMean: number;
+  framePeakMax: number;
 }
 
 export interface TranscriptionResult {
@@ -244,8 +271,8 @@ export interface RouteCandidate {
   estimatedMinutes: number;
   /** Ordered [lat, lng] pairs. At least two points. */
   geometry: Array<[number, number]>;
-  /** Multiplier against free-flow time. 1.0 means free flow. */
-  trafficFactor: number;
+  /** Multiplier against free-flow time when the provider supplies one; otherwise unknown. */
+  trafficFactor: number | null;
 }
 
 export interface RouteResult {

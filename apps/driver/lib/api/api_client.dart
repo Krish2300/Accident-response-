@@ -5,6 +5,9 @@ import '../core/config.dart';
 
 class ApiClient {
   static const String _tokenKey = 'auth_token';
+  final http.Client _http;
+
+  ApiClient({http.Client? client}) : _http = client ?? http.Client();
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -40,7 +43,7 @@ class ApiClient {
 
   Future<http.Response> post(String path, Map<String, dynamic> body) async {
     final headers = await getHeaders();
-    return await http.post(
+    return await _http.post(
       buildUri(path),
       headers: headers,
       body: jsonEncode(body),
@@ -49,9 +52,6 @@ class ApiClient {
 
   Future<http.Response> get(String path, [Map<String, String>? query]) async {
     final headers = await getHeaders();
-    return await http.get(
-      buildUri(path, query),
-      headers: headers,
-    );
+    return await _http.get(buildUri(path, query), headers: headers);
   }
 }

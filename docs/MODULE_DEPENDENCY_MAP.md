@@ -6,6 +6,11 @@ Pre-Hospital Emergency Survival System — cross-module architecture.
 repository, not from an external specification. Where a module is not implemented,
 its row says so explicitly and no behaviour is claimed on its behalf.
 
+> **Current-state notice (2026-10-25):** Sections 1–14 are a historical snapshot
+> and are not an accurate inventory of the current checkout. Use the source-verified
+> addendum in §15 for present implementation and test status. The older sections
+> remain below to preserve their original architectural rationale.
+
 ---
 
 ## 1. Current repository inventory (verified)
@@ -409,3 +414,43 @@ Each is now covered by a regression test.
 | `.env` set `PROTOCOL_MAX_CLARIFICATIONS`; the config read `PROTOCOL_CLARIFICATION_LIMIT` | The configured clarification limit silently fell back to the default | Config accepts the documented name first, with the older spelling as a fallback |
 | `Module11` exposed repositories but no HTTP surface | The server had no way to mount Module 11's routes without reaching into internals | `routeDefinitions()` on `Module11`, alongside the other public facades |
 | `routeAdapter` called `fastify.get(config)` with the URL inside the options object | The server refused to start: `URL must be a string. Received 'object'` | Single `fastify.route({ method, url, ... })` call |
+
+## 15. Current source-verified inventory — 2026-10-25
+
+This section supersedes the historical inventory and open-item claims above.
+It describes the current `main` checkout at `121d7933` plus the preserved
+working-tree files. “Tested” refers only to local automated evidence; it does
+not imply clinical, telephony, device, or production acceptance.
+
+| Module | Current implementation and wiring | Evidence and limits |
+| --- | --- | --- |
+| 1 — Emergency call | `module_01_emergency_call` is composed in `apps/server/src/app.ts`; loopback and Asterisk adapters exist. | Call, AudioSocket framing, and synthetic bridge tests pass. No actual PBX caller/media test was run. |
+| 2 — Speech processing | `module_02_speech_processing` is composed with loopback and Whisper/eSpeak provider implementations. | Provider and speech-route tests pass. The canonical English Whisper set remains 3/7 normalized matches; live caller speech and audible PBX playback are unverified. |
+| 3 — NLP extraction | Python FastAPI service under `modules/module3_emergency_nlp`; Node adapter/routes under `apps/server/src/nlp`. | Adapter and classifier unit tests pass. Live mode is disabled by default; the live Python test was skipped because the available interpreters lack the documented Python test/runtime dependencies. |
+| 4 — Conversation support | The active server composition uses `apps/server/src/conversation` adapters. Python source also exists under `modules/module_4`, but this audit did not establish that legacy service as wired into the server. | Conversation, localization, and configuration tests pass. No caller-facing browser client is claimed. |
+| 5 — Bystander assistance | Protocol engine, session service, HTTP API, heuristic/LLM boundary, and development harness are composed in the server. | Unit/API tests pass. All five protocol catalogues are `UNREVIEWED`; disconnect semantics remain pending protocol-owner approval. |
+| 6 — Ambulance management | Fleet, assignment, driver decisions, GPS ingestion, explicit dispatch, and opt-in automatic dispatch exist and are composed. | Automated dispatch config defaults disabled; isolated simulation and route tests pass. No real vehicle or dispatch integration was exercised. |
+| 7 — Hospital intelligence | Resource management and operator hospital selection are composed. | Selection/resource tests pass; automatic selection defaults disabled; no live hospital system is connected. |
+| 8 — Route optimization | Mock, OSRM, and Google providers exist; the default is mock and automatic routing is disabled. | Provider and route tests pass; no external routing provider was contacted. |
+| 9 — Corridor coordination | Simulated corridor and police-notification records are composed. | Tests verify simulation labels and non-delivery; no traffic controller, police recipient, or external notification was contacted. |
+| 10 — Lifecycle orchestration | The server uses the read-only event-log lifecycle observer/projection and routes. A separate legacy FSM remains in the Module 10 tree. | Projection tests pass. Lifecycle milestones are operator reports, not independent observations or patient outcomes. |
+| 11 — Database and events | Prisma schema, repositories, event bus, append-only event log, and migrations are composed. | Schema validates and isolated tests migrate disposable SQLite databases. Shared/runtime databases were not inspected or changed in this audit. |
+| 12 — Dashboard and analytics | Module 12 APIs/analytics and the `apps/dashboard` React/Vite UI exist and are composed. | Frontend, API, and live local Vite-proxy tests pass. Physical driver-device UI/GPS remains unverified. |
+
+### Verification snapshot
+
+- `npm run typecheck`: passed.
+- Default `npm test -- --reporter=dot`: 80 files passed, 9 skipped; 785 passed,
+  66 skipped.
+- With documented isolated composition, outcome, and dashboard gates enabled:
+  88 files passed, 1 skipped; 850 passed, 1 skipped. The skipped test is the
+  opt-in live Module 3 Python service test.
+- ESLint ran but exited 1 on two `no-empty` errors in pre-existing untracked
+  Whisper experiment scripts under `artifacts/`; it also reported 49 warnings.
+  Those experiment files were left unchanged.
+- Server and dashboard bundles built to fresh audit outputs because the normal
+  `dist/` output already existed and was preserved.
+- `npm run protocols:validate`: 5 catalogues, 33 steps, 0 errors, 3 warnings;
+  all five catalogues remain `UNREVIEWED`.
+- `prisma validate`: passed. Isolated integration tests exercised migrations
+  only against owned temporary SQLite databases.

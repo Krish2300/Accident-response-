@@ -5,7 +5,7 @@ import { Module6 } from '../module.js';
 async function main() {
   const db = createPrismaClient();
   const module11 = createModule11({ db });
-  const module6 = new Module6({
+  new Module6({
     ambulances: module11.ambulances,
     events: module11.eventPublisher,
   });

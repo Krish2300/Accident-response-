@@ -1,0 +1,23 @@
+
+> prehospital-emergency-survival-system@0.1.0 protocols:validate
+> tsx modules/module_05_bystander_assistance/src/protocol_engine/validateCatalogues.ts
+
+
+Protocol catalogue: F:\minor\modules\module_05_bystander_assistance\protocols
+────────────────────────────────────────────────────────────────────────
+[WARN] active-seizure@1.0.0                   steps=  5  review_status=UNREVIEWED
+         warning Escalation rule 'status-epilepticus-risk' is CRITICAL but names no escalation_step, so the bystander may not hear an escalation instruction.
+         warning Escalation rule 'repeated-seizures' is CRITICAL but names no escalation_step, so the bystander may not hear an escalation instruction.
+[ OK ] cardiac-arrest-adult@1.0.0             steps=  9  review_status=UNREVIEWED
+[WARN] choking-adult@1.0.0                    steps=  7  review_status=UNREVIEWED
+         warning Escalation rule 'unresponsive-choking-patient' is CRITICAL but names no escalation_step, so the bystander may not hear an escalation instruction.
+[ OK ] general-triage@1.0.0                   steps=  6  review_status=UNREVIEWED
+[ OK ] severe-bleeding@1.0.0                  steps=  6  review_status=UNREVIEWED
+────────────────────────────────────────────────────────────────────────
+5 protocol(s), 33 step(s), 0 error(s), 3 warning(s)
+
+Note: 5 protocol(s) are not marked CLINICALLY_REVIEWED. That is expected in
+development. It is not a validation failure: unreviewed content is served
+with its review status attached to every protocol session.
+
+[protocols] ok

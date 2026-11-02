@@ -15,6 +15,7 @@ export {
   type StartSessionInput,
   type HandleUtteranceInput,
 } from './session/sessionService.js';
+export type { ProtocolTurnOrchestrator } from './session/orchestration.js';
 export { ProtocolEngine } from './protocol_engine/engine.js';
 export type {
   EngineState,

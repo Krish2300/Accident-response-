@@ -18,19 +18,27 @@ export interface Module12Config {
   };
 }
 
+function parseBooleanEnv(name: string, value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  throw new Error(`${name} must be either "true" or "false".`);
+}
+
 export function loadModule12Config(): Module12Config {
   return {
     analytics: {
       defaultWindowDays: Number(process.env.MODULE12_DEFAULT_WINDOW_DAYS ?? 30),
       maxWindowDays: Number(process.env.MODULE12_MAX_WINDOW_DAYS ?? 365),
-      includeSimulationByDefault: Boolean(process.env.MODULE12_INCLUDE_SIM === 'false'),
+      includeSimulationByDefault: parseBooleanEnv('MODULE12_INCLUDE_SIM', process.env.MODULE12_INCLUDE_SIM, false),
     },
     dashboard: {
       refreshIntervalMs: Number(process.env.MODULE12_REFRESH_INTERVAL_MS ?? 5000),
       maxEventsInTimeline: Number(process.env.MODULE12_MAX_TIMELINE ?? 100),
     },
     learning: {
-      enabled: Boolean(process.env.MODULE12_LEARNING_ENABLED !== 'false'),
+      enabled: parseBooleanEnv('MODULE12_LEARNING_ENABLED', process.env.MODULE12_LEARNING_ENABLED, false),
       minSamplesForUpdate: Number(process.env.MODULE12_LEARNING_MIN_SAMPLES ?? 10),
     },
   };

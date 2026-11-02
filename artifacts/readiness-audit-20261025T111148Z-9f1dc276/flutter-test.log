@@ -1,0 +1,12 @@
+COMMAND: flutter test --no-pub --concurrency=1 (source mirror; existing ignored outputs untouched)
+START_UTC: 2026-10-25T11:19:41.6210490Z
+00:00 +0: loading F:/minor/artifacts/readiness-audit-20261025T111148Z-9f1dc276/driver-validation-copy/test/widget_test.dart
+00:00 +0: F:/minor/artifacts/readiness-audit-20261025T111148Z-9f1dc276/driver-validation-copy/test/widget_test.dart: App builds
+00:01 +1: loading F:/minor/artifacts/readiness-audit-20261025T111148Z-9f1dc276/driver-validation-copy/test/driver_contracts_test.dart
+00:02 +1: F:/minor/artifacts/readiness-audit-20261025T111148Z-9f1dc276/driver-validation-copy/test/driver_contracts_test.dart: reads assignment id, status and ambulance from authenticated response
+00:02 +2: F:/minor/artifacts/readiness-audit-20261025T111148Z-9f1dc276/driver-validation-copy/test/driver_contracts_test.dart: posts explicit accept or decline decisions and reads only dispatched route data
+00:02 +3: F:/minor/artifacts/readiness-audit-20261025T111148Z-9f1dc276/driver-validation-copy/test/driver_contracts_test.dart: surfaces authorization errors instead of treating a failed response as success
+00:03 +4: All tests passed!
+
+EXIT_CODE: 0
+END_UTC: 2026-10-25T11:20:03.7095162Z

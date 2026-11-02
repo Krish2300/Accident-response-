@@ -40,10 +40,15 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  outcomes           Outcome[]
-  assignments        AmbulanceAssignment[]
-  protocolSessions   ProtocolSession[]
-  assignedAmbulances Ambulance[]           @relation("AmbulanceAssignedDriver")
+  outcomes            Outcome[]
+  outcomeAssertions   OutcomeAssertion[]
+  outcomeReviews      OutcomeReview[]
+  outcomeGrantsReceived  EmergencyOutcomeGrant[] @relation("OutcomeGrantGrantee")
+  outcomeGrantsAuthorized EmergencyOutcomeGrant[] @relation("OutcomeGrantGrantor")
+  outcomeGrantsRevoked   EmergencyOutcomeGrant[] @relation("OutcomeGrantRevoker")
+  assignments         AmbulanceAssignment[]
+  protocolSessions    ProtocolSession[]
+  assignedAmbulances  Ambulance[]           @relation("AmbulanceAssignedDriver")
 
   @@index([role])
   @@map("users")
@@ -83,6 +88,8 @@ model Emergency {
   corridor         Corridor?
   decisions        Decision[]
   outcome          Outcome?
+  outcomeAssertions OutcomeAssertion[]
+  outcomeGrants    EmergencyOutcomeGrant[]
   learningSample   LearningSample?
   systemEvents     SystemEvent[]
   patient          Patient?
@@ -279,6 +286,8 @@ model AmbulanceAssignment {
   consideredCandidates     Int       @default(0)
   decidedAt                DateTime  @default(now())
   createdAt                DateTime  @default(now())
+  offeredAt                DateTime?
+  expiresAt                DateTime?
   releasedAt               DateTime?
 
   emergency       Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
@@ -603,11 +612,106 @@ model Outcome {
   @@map("outcomes")
 }
 
+/// Append-only, provenance-labelled outcome assertions. Legacy Outcome rows
+/// remain readable and are not silently promoted into this history.
+model OutcomeAssertion {
+  id                    String   @id
+  emergencyId           String
+  category              String
+  categoryVersion       String
+  provenance            String
+  dataClassification    String
+  survivalToDischarge   Boolean?
+  observedAt            DateTime?
+  recordedAt            DateTime @default(now())
+  submittedByUserId     String?
+  evidenceRefsJson      String?
+  correctionReasonCode  String?
+  idempotencyKey        String   @unique
+  supersedesOutcomeId   String?
+
+  emergency      Emergency          @relation(fields: [emergencyId], references: [id], onDelete: Restrict)
+  submittedBy    User?              @relation(fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  predecessor    OutcomeAssertion?  @relation("OutcomeAssertionCorrection", fields: [emergencyId, supersedesOutcomeId], references: [emergencyId, id], onDelete: Restrict)
+  successor      OutcomeAssertion?  @relation("OutcomeAssertionCorrection")
+  reviews        OutcomeReview[]
+  learningSamples LearningSample[]
+
+  @@unique([emergencyId, id])
+  @@unique([emergencyId, supersedesOutcomeId])
+  @@unique([supersedesOutcomeId])
+  @@index([emergencyId, recordedAt])
+  @@index([category, recordedAt])
+  @@index([dataClassification, provenance])
+  @@map("outcome_assertions")
+}
+
+/// Immutable reviewer decisions over one outcome assertion. Corrections append
+/// a new linked review; they never modify an earlier decision.
+model OutcomeReview {
+  id                    String   @id
+  outcomeRecordId       String
+  reviewerUserId        String
+  decision              String
+  reviewReasonCode      String?
+  reviewedAt            DateTime @default(now())
+  eligibleForLearning   Boolean
+  eligibilityReasonCode String
+  evidenceAssessmentJson String?
+  idempotencyKey        String   @unique
+  supersedesReviewId    String?
+
+  outcome       OutcomeAssertion @relation(fields: [outcomeRecordId], references: [id], onDelete: Restrict)
+  reviewer      User             @relation(fields: [reviewerUserId], references: [id], onDelete: Restrict)
+  predecessor   OutcomeReview?   @relation("OutcomeReviewCorrection", fields: [outcomeRecordId, supersedesReviewId], references: [outcomeRecordId, id], onDelete: Restrict)
+  successor     OutcomeReview?   @relation("OutcomeReviewCorrection")
+
+  @@unique([outcomeRecordId, id])
+  @@unique([outcomeRecordId, supersedesReviewId])
+  @@unique([supersedesReviewId])
+  @@index([outcomeRecordId, reviewedAt])
+  @@index([reviewerUserId, reviewedAt])
+  @@map("outcome_reviews")
+}
+
+/// Explicitly granted, per-emergency outcome permissions. A grant is necessary
+/// but never sufficient: the grantee's role gate and every outcome invariant
+/// (binding, independence, idempotency, append-only history, learning gate)
+/// still apply. Once any grant row exists for a user on an emergency, grants
+/// become the sole authority for that user on that emergency, so a revocation
+/// cannot be bypassed through prior participation. Without grant rows, the
+/// legacy outcome-ownership relationships (prior assertion, prior review,
+/// legacy outcome recorder) remain the only implicit access.
+model EmergencyOutcomeGrant {
+  id              String    @id
+  emergencyId     String
+  granteeUserId   String
+  /// Allowlisted capability: 'SUBMIT' or 'REVIEW'. Read access is implied by
+  /// any active grant on the emergency and is not itself grantable.
+  capability      String
+  grantedByUserId String
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+  revokedByUserId String?
+  revokeReason    String?
+
+  emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  grantee   User      @relation("OutcomeGrantGrantee", fields: [granteeUserId], references: [id], onDelete: Cascade)
+  grantedBy User      @relation("OutcomeGrantGrantor", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  revokedBy User?     @relation("OutcomeGrantRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([emergencyId, granteeUserId, capability])
+  @@index([emergencyId])
+  @@index([granteeUserId])
+  @@map("emergency_outcome_grants")
+}
+
 /// One row per completed emergency: the feature vector the outcome-learning
 /// layer trains on. Never contains patient-identifying data.
 model LearningSample {
   id                  String   @id
   emergencyId         String   @unique
+  outcomeAssertionId  String?
   hospitalId          String?
   emergencyType       String
   severity            String
@@ -629,10 +733,12 @@ model LearningSample {
   recordedAt          DateTime @default(now())
 
   emergency Emergency @relation(fields: [emergencyId], references: [id], onDelete: Cascade)
+  outcomeAssertion OutcomeAssertion? @relation(fields: [outcomeAssertionId], references: [id], onDelete: Restrict)
   hospital  Hospital? @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
 
   @@index([emergencyType, recordedAt])
   @@index([provenance])
+  @@index([outcomeAssertionId])
   @@map("learning_samples")
 }
 

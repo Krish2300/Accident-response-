@@ -1,0 +1,334 @@
+
+ RUN  v2.1.9 F:/minor
+
+ ✓ modules/module_01_emergency_call/tests/asteriskProtocols.test.ts (50 tests) 2453ms
+   ✓ AudioSocket server > splits server-to-voice audio into 20 ms frames Asterisk will accept 1179ms
+ ✓ modules/module_12_dashboard_analytics/tests/dashboardFrontend.test.ts (32 tests) 105ms
+ ✓ tests/serverCompositionAmbulanceWorkflow.integration.test.ts (1 test) 3869ms
+   ✓ isolated server composition: dispatch, route and mock notification workflow > uses the real Fastify composition with only owned SQLite state and mock adapters 3859ms
+ ✓ modules/module_01_emergency_call/tests/audioBridgeConversation.test.ts (14 tests) 991ms
+ ✓ tests/serverCompositionOperationalEvents.integration.test.ts (1 test) 3385ms
+   ✓ isolated server composition: operational events, hospital resources and route recalculation > updates hospital resources and recalculates a route end to end with durable events and operator visibility 3376ms
+stderr | modules/module_05_bystander_assistance/tests/sessionService.test.ts > protocol session service > routes gasping breathing into the arrest pathway, not reassurance
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/sessionService.test.ts > protocol session service > halts when the fallback reports an unsafe scene mid-conversation
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/sessionService.test.ts > protocol session service > advances past call-emergency-services when the caller states a location
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/sessionService.test.ts > protocol session service > advances past start-compressions when the caller states they began CPR
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/sessionService.test.ts > protocol session service > does not advance on an ambiguous CPR mention or a vague location
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+ ✓ modules/module_05_bystander_assistance/tests/sessionService.test.ts (19 tests) 430ms
+ ✓ modules/module_02_speech_processing/tests/realSpeechProviders.test.ts (46 tests) 643ms
+   ✓ runProcess > kills an engine that overruns its deadline instead of leaving a call open 313ms
+stderr | tests/outcomeGrantAudit.integration.test.ts > durable outcome grant lifecycle audit events on an owned isolated SQLite database > leaves no success event behind when the grant-row write fails
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to record outcome access grant"}
+
+stderr | tests/outcomeGrantAudit.integration.test.ts > durable outcome grant lifecycle audit events on an owned isolated SQLite database > rolls the grant mutation back when the event write fails
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to record outcome access grant"}
+
+stderr | tests/outcomeGrantAudit.integration.test.ts > durable outcome grant lifecycle audit events on an owned isolated SQLite database > rolls the grant mutation back when the event write fails
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to revoke outcome access grant"}
+
+ ✓ tests/outcomeGrantAudit.integration.test.ts (12 tests) 3333ms
+stderr | modules/module_11_database_event_system/tests/outcomeHistory.integration.test.ts > append-only outcome history on an isolated SQLite database > rolls back repository writes when durable event persistence fails before commit
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to record outcome assertion"}
+
+stderr | modules/module_11_database_event_system/tests/outcomeHistory.integration.test.ts > append-only outcome history on an isolated SQLite database > rolls back repository writes when durable event persistence fails before commit
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to record outcome review"}
+
+stderr | modules/module_11_database_event_system/tests/outcomeHistory.integration.test.ts > append-only outcome history on an isolated SQLite database > does not duplicate an outcome or event after post-commit publication failure and retry
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to record outcome assertion"}
+
+ ✓ modules/module_11_database_event_system/tests/outcomeHistory.integration.test.ts (21 tests) 3504ms
+stderr | modules/module_05_bystander_assistance/tests/factTrust.test.ts > values nobody declared > drops a value outside the declared vocabulary instead of acting on it
+{"scope":"module_05.engine","level":"warn","msg":"rejected fact values outside the declared vocabulary","protocolId":"cardiac-arrest-adult","rejected":[{"fact":"scene_safe","reason":"'YESSS' is not a declared value for 'scene_safe' (allowed: YES, NO, UNKNOWN)"}]}
+
+stderr | modules/module_05_bystander_assistance/tests/factTrust.test.ts > values nobody declared > asks again rather than guessing which declared value was meant
+{"scope":"module_05.engine","level":"warn","msg":"rejected fact values outside the declared vocabulary","protocolId":"cardiac-arrest-adult","rejected":[{"fact":"breathing_status","reason":"'GASPING_AGAINS' is not a declared value for 'breathing_status' (allowed: BREATHING, NOT_BREATHING, GASPNING_AGAINST, AGHASTIC, UNKNOWN)"}]}
+
+ ✓ modules/module_05_bystander_assistance/tests/factTrust.test.ts (26 tests) 122ms
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > ollama provider respond > falls back to the protocol text when the model invents a dose
+{"scope":"module_05.llm","level":"warn","msg":"LLM rephrasing rejected by safety gate; using protocol text","reason":"reply introduced numbers that are not in the protocol text"}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > always requires clarification so a human stays involved
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > detects the keywords it claims to detect
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > never reports gasping or agonal breathing as normal breathing
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > still reports ordinary breathing as BREATHING
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > leaves unrecognised facts as UNKNOWN rather than guessing
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > reports an unsafe scene when the caller describes a hazard
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > does not mistake a reassuring statement for a hazard report
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > lets a hazard override a reassurance in the same message
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > does not treat the mechanism of an injury as a scene hazard
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > extracts caller_location from an explicit "I am at X" statement
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > leaves caller_location absent for vague or missing locations
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > never infers an exact location from an ambiguous utterance
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > sets cpr_started to YES when the caller states they began compressions
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > sets cpr_started to NO when the caller states they have not started
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > leaves cpr_started UNKNOWN for questions or unrelated mentions
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > heuristic fallback > always flags classification for human review
+{"scope":"module_05.llm","level":"warn","msg":"extraction produced by heuristic fallback","reason":"LLM unavailable; deterministic keyword matcher in use. Not a language model."}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > llm gateway resolution > falls back to the heuristic provider when the model is unreachable
+{"scope":"module_05.llm","level":"warn","msg":"primary LLM provider unavailable","provider":"ollama","reason":"fetch failed"}
+
+stderr | modules/module_05_bystander_assistance/tests/llm.test.ts > llm gateway resolution > throws rather than fabricating output when no fallback is allowed
+{"scope":"module_05.llm","level":"warn","msg":"primary LLM provider unavailable","provider":"ollama","reason":"fetch failed"}
+
+ ✓ modules/module_05_bystander_assistance/tests/llm.test.ts (45 tests) 55ms
+stderr | tests/outcomeAccessGrants.integration.test.ts > explicit emergency outcome access grants on an owned isolated SQLite database > fails closed when authorization storage cannot be queried
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to evaluate emergency outcome access"}
+
+ ✓ tests/outcomeAccessGrants.integration.test.ts (12 tests) 3199ms
+ ✓ tests/outcomeEmergencyScope.integration.test.ts (9 tests) 3046ms
+ ✓ tests/dashboardLiveProxy.integration.test.ts (1 test) 7699ms
+   ✓ live dashboard against an isolated Fastify backend through the Vite proxy > verifies authenticated API requests, lifecycle projection, fleet freshness and error handling 1480ms
+ ✓ modules/module_02_speech_processing/tests/speechService.test.ts (26 tests) 22ms
+ ✓ modules/module_05_bystander_assistance/tests/protocolEngine.test.ts (34 tests) 58ms
+ ✓ tests/outcomeApi.integration.test.ts (8 tests) 3109ms
+ ✓ modules/module_01_emergency_call/tests/callService.test.ts (24 tests) 21ms
+ ✓ tests/driverGpsIntegration.test.ts (20 tests) 2926ms
+ ✓ modules/module_08_route_optimization/tests/routeOptimizationService.test.ts (15 tests) 27ms
+ ✓ modules/module_08_route_optimization/tests/routeRecalculation.test.ts (12 tests) 31ms
+ ✓ tests/module4ConversationSupport.test.ts (20 tests) 17ms
+ ✓ modules/module_08_route_optimization/tests/operatorRoutes.test.ts (28 tests) 450ms
+   ✓ Module 8 explicit route-generation route > requires dispatcher/admin authentication and validates the requested route leg 336ms
+ ✓ tests/protocolTurnOrchestrator.test.ts (12 tests) 13ms
+ ✓ modules/module10/module10/tests/lifecycleProjection.test.ts (15 tests) 20ms
+stderr | modules/module_08_route_optimization/tests/routeRecalculationActor.integration.test.ts > ROUTE_RECALCULATED authenticated actor attribution > rolls back the route replacement and emits no successful event when the durable event write fails
+{"scope":"module_11.db","level":"error","msg":"database failure","code":"DATABASE_FAILURE","message":"Failed to replace route"}
+
+ ✓ modules/module_08_route_optimization/tests/routeRecalculationActor.integration.test.ts (7 tests) 2964ms
+   ✓ ROUTE_RECALCULATED authenticated actor attribution > persists the dispatcher identity from trusted auth context into the durable event 449ms
+ ✓ modules/module10/module10/tests/lifecycleObserver.test.ts (11 tests) 83ms
+ ✓ modules/module_08_route_optimization/tests/routeGeneration.integration.test.ts (6 tests) 2517ms
+stdout | tests/module02SpeechIntegration.test.ts
+{"scope":"server","level":"info","msg":"Module 10 lifecycle event history replayed; draining buffered live events","highWaterSequence":0}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > stores a final utterance as a sequenced transcript row with its event
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-A2B5EAD1C50001","callSessionId":"CALL-5BCF72D00B0003","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > stores a final utterance as a sequenced transcript row with its event
+{"scope":"server","level":"info","msg":"transcribed and stored a final utterance","callSessionId":"CALL-5BCF72D00B0003","emergencyId":"EMG-A2B5EAD1C50001","confidence":0.75,"band":"HIGH","provider":"loopback"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > numbers a second utterance after the first
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-7A1F9D08300008","callSessionId":"CALL-8CF2BD8100000A","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > numbers a second utterance after the first
+{"scope":"server","level":"info","msg":"transcribed and stored a final utterance","callSessionId":"CALL-8CF2BD8100000A","emergencyId":"EMG-7A1F9D08300008","confidence":0.75,"band":"HIGH","provider":"loopback"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > numbers a second utterance after the first
+{"scope":"server","level":"info","msg":"transcribed and stored a final utterance","callSessionId":"CALL-8CF2BD8100000A","emergencyId":"EMG-7A1F9D08300008","confidence":0.75,"band":"HIGH","provider":"loopback"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > publishes an interim result without writing a row
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-2BCFAC25A80011","callSessionId":"CALL-C140E549B70013","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > keeps a low-confidence utterance out of the record
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-1E2B8C79600017","callSessionId":"CALL-B970FFC8190019","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > refuses a session that belongs to a different emergency
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-EE1C52322C001D","callSessionId":"CALL-09D5D8DE97001F","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > refuses a session that belongs to a different emergency
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-3DE592CC480022","callSessionId":"CALL-7D91100D000024","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > refuses speech on a call that has been hung up
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-E0949EC1010027","callSessionId":"CALL-58E67B070C0029","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/transcribe > refuses speech on a call that has been hung up
+{"scope":"server","level":"info","msg":"emergency call closed","callSessionId":"CALL-58E67B070C0029","emergencyId":"EMG-E0949EC1010027","durationMs":11}
+
+stdout | tests/module02SpeechIntegration.test.ts > POST /speech/speak > records the attempt and reports that nothing is audible
+{"scope":"server","level":"info","msg":"emergency call opened","emergencyId":"EMG-3E4740EE4C002D","callSessionId":"CALL-98CFFC4BEA002F","transport":"LOOPBACK","provider":"loopback","isLiveTransport":false,"language":"en"}
+
+stderr | tests/module02SpeechIntegration.test.ts > POST /speech/speak > records the attempt and reports that nothing is audible
+{"scope":"server","level":"warn","msg":"provider returned no playable audio","provider":"loopback","language":"en","characters":28}
+
+stdout | tests/module02SpeechIntegration.test.ts
+{"0":"s","1":"h","2":"u","3":"t","4":"t","5":"i","6":"n","7":"g","8":" ","9":"d","10":"o","11":"w","12":"n","scope":"server","level":"info"}
+
+ ✓ tests/module02SpeechIntegration.test.ts (12 tests) 2926ms
+ ✓ tests/asteriskSpeechPipeline.test.ts (1 test) 195ms
+ ✓ modules/module_09_corridor_coordination/tests/corridorCoordination.integration.test.ts (6 tests) 2810ms
+ ✓ tests/module01CallIntegration.test.ts (10 tests) 2733ms
+{"level":30,"time":"2026-10-25T12:23:05.332Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:07e18c94-5970-4999-a7bb-3fd8117cdeda] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.334Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:02ead9db-777a-4456-be1d-c3fadc80ba89] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.334Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:02ead9db-777a-4456-be1d-c3fadc80ba89] CALL_ACTIVE → ANALYZING (trigger: SPEECH_TRANSCRIBED, actor: MODULE_2, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.334Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:02ead9db-777a-4456-be1d-c3fadc80ba89] ANALYZING → CLASSIFIED (trigger: NLP_CLASSIFICATION_DONE, actor: MODULE_3, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.334Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:02ead9db-777a-4456-be1d-c3fadc80ba89] CLASSIFIED → RESPONSE_INITIATED (trigger: RESPONSE_DECISION_MADE, actor: MODULE_10, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.334Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:02ead9db-777a-4456-be1d-c3fadc80ba89] RESPONSE_INITIATED → AMBULANCE_ASSIGNED (trigger: AMBULANCE_DISPATCHED, actor: MODULE_6, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.335Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.335Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] CALL_ACTIVE → ANALYZING (trigger: SPEECH_TRANSCRIBED, actor: MODULE_2, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.335Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] ANALYZING → CLASSIFIED (trigger: NLP_CLASSIFICATION_DONE, actor: MODULE_3, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.335Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] CLASSIFIED → RESPONSE_INITIATED (trigger: RESPONSE_DECISION_MADE, actor: MODULE_10, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.335Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] RESPONSE_INITIATED → AMBULANCE_ASSIGNED (trigger: AMBULANCE_DISPATCHED, actor: MODULE_6, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.335Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] AMBULANCE_ASSIGNED → ROUTE_GENERATED (trigger: ROUTE_CALCULATED, actor: MODULE_8, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.336Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] ROUTE_GENERATED → CORRIDOR_ACTIVE (trigger: CORRIDOR_ACTIVATED, actor: MODULE_9, 1ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.336Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] CORRIDOR_ACTIVE → HOSPITAL_ARRIVAL (trigger: PATIENT_ARRIVED, actor: MODULE_6, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.336Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:d5fbc04c-ee43-453a-a0f3-b3f33987b1d3] HOSPITAL_ARRIVAL → COMPLETED (trigger: INCIDENT_RESOLVED, actor: MODULE_7, 0ms)"}
+{"level":40,"time":"2026-10-25T12:23:05.336Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:3b3c539e-4db5-4750-bd94-a1cb96201f21] Invalid trigger AMBULANCE_DISPATCHED in state NEW"}
+{"level":30,"time":"2026-10-25T12:23:05.337Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:0837b6a7-1de7-4990-9500-c2a73d4e704f] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.337Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:0837b6a7-1de7-4990-9500-c2a73d4e704f] CALL_ACTIVE → ANALYZING (trigger: SPEECH_TRANSCRIBED, actor: MODULE_2, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.337Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:0837b6a7-1de7-4990-9500-c2a73d4e704f] ANALYZING → CLASSIFIED (trigger: NLP_CLASSIFICATION_DONE, actor: MODULE_3, 0ms)"}
+{"level":40,"time":"2026-10-25T12:23:05.337Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:0837b6a7-1de7-4990-9500-c2a73d4e704f] Guard blocked CLASSIFIED->RESPONSE_INITIATED: Location is required before dispatching response"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ece0d5bb-e5ab-41e2-9270-e016da10e755] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ece0d5bb-e5ab-41e2-9270-e016da10e755] CALL_ACTIVE → ANALYZING (trigger: SPEECH_TRANSCRIBED, actor: MODULE_2, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ece0d5bb-e5ab-41e2-9270-e016da10e755] ANALYZING → CLASSIFIED (trigger: NLP_CLASSIFICATION_DONE, actor: MODULE_3, 0ms)"}
+{"level":40,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ece0d5bb-e5ab-41e2-9270-e016da10e755] Guard blocked CLASSIFIED->RESPONSE_INITIATED: NLP confidence too low to auto-dispatch"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ae0eeb13-007f-43de-8c7b-c5717fa2d0aa] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ae0eeb13-007f-43de-8c7b-c5717fa2d0aa] CALL_ACTIVE → ANALYZING (trigger: SPEECH_TRANSCRIBED, actor: MODULE_2, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ae0eeb13-007f-43de-8c7b-c5717fa2d0aa] ANALYZING → CLASSIFIED (trigger: NLP_CLASSIFICATION_DONE, actor: MODULE_3, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ae0eeb13-007f-43de-8c7b-c5717fa2d0aa] CLASSIFIED → RESPONSE_INITIATED (trigger: RESPONSE_DECISION_MADE, actor: MODULE_10, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ae0eeb13-007f-43de-8c7b-c5717fa2d0aa] RESPONSE_INITIATED → AMBULANCE_ASSIGNED (trigger: AMBULANCE_DISPATCHED, actor: MODULE_6, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.338Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:ae0eeb13-007f-43de-8c7b-c5717fa2d0aa] AMBULANCE_ASSIGNED → CANCELLED (trigger: CANCEL_INCIDENT, actor: MODULE_10_OPERATOR, 0ms)"}
+{"level":30,"time":"2026-10-25T12:23:05.340Z","service":"module-10-orchestrator","version":"0.1.0","msg":"[FSM:14d9c7fb-73b5-4105-bea0-606bed018ffc] NEW → CALL_ACTIVE (trigger: CALL_RECEIVED, actor: MODULE_1, 0ms)"}
+ ✓ modules/module10/module10/tests/stateMachine.test.ts (11 tests) 15ms
+ ✓ tests/asteriskConversationController.test.ts (11 tests) 12ms
+ ✓ tests/nlpClassifyRoute.test.ts (10 tests) 80ms
+ ✓ modules/module_06_ambulance_management/tests/autoDispatch.test.ts (13 tests) 18ms
+ ✓ modules/module_08_route_optimization/tests/routeRecalculation.integration.test.ts (4 tests) 2500ms
+ ✓ modules/module_01_emergency_call/tests/audioBridgeSilence.test.ts (4 tests) 1074ms
+   ✓ AudioBridge caller silence > suppresses the silence prompt while the caller is speaking 483ms
+ ✓ modules/module_07_hospital_intelligence/tests/hospitalSelection.test.ts (9 tests) 15ms
+ ✓ modules/module_11_database_event_system/tests/ambulanceAssignmentDecision.test.ts (5 tests) 21ms
+ ✓ tests/module3Classifier.test.ts (10 tests) 116ms
+ ✓ modules/module_12_dashboard_analytics/tests/learning.test.ts (9 tests) 24ms
+ ✓ modules/module_01_emergency_call/tests/syntheticTimingMarkers.test.ts (4 tests) 257ms
+ ✓ modules/module_07_hospital_intelligence/tests/hospitalSelection.integration.test.ts (3 tests) 2370ms
+ ✓ modules/module_06_ambulance_management/tests/autoDispatch.integration.test.ts (5 tests) 2539ms
+ ✓ modules/module_08_route_optimization/tests/googleRoutesProvider.test.ts (9 tests) 125ms
+ ✓ modules/module_11_database_event_system/tests/transactionSafety.test.ts (5 tests) 2615ms
+ ✓ tests/module4ControllerLocalisation.test.ts (5 tests) 7ms
+ ✓ modules/module_06_ambulance_management/tests/driverAssignmentRoutes.test.ts (4 tests) 388ms
+   ✓ Module 6 authenticated driver assignment decisions > derives driver identity from authentication, permits only own decisions and rejects malformed payloads 360ms
+ ✓ tests/module4Localizer.test.ts (11 tests) 20ms
+ ✓ modules/module_07_hospital_intelligence/tests/hospitalResourceUpdate.integration.test.ts (4 tests) 2302ms
+ ✓ modules/module_09_corridor_coordination/tests/corridorService.test.ts (8 tests) 17ms
+ ✓ modules/module_08_route_optimization/tests/osrmRoutingProvider.test.ts (10 tests) 46ms
+ ✓ modules/module_09_corridor_coordination/tests/operatorRoutes.test.ts (7 tests) 420ms
+   ✓ Module 9 explicit simulated corridor route > requires dispatcher/admin authentication and validates the empty action body 387ms
+ ✓ modules/module_09_corridor_coordination/tests/geometry.test.ts (7 tests) 9ms
+ ✓ modules/module_07_hospital_intelligence/tests/autoSelect.test.ts (6 tests) 11ms
+ ✓ modules/module_11_database_event_system/tests/simulatedPoliceNotificationRepository.test.ts (2 tests) 14ms
+ ✓ modules/module_07_hospital_intelligence/tests/hospitalResourceUpdate.test.ts (5 tests) 365ms
+   ✓ Module 7 hospital resource update route > requires authentication and the dispatcher/admin action role 335ms
+ ✓ modules/module_08_route_optimization/tests/autoRouteService.test.ts (5 tests) 11ms
+ ✓ tests/helpers/isolatedTestDatabase.test.ts (5 tests) 6740ms
+   ✓ isolated integration database harness > creates a unique migrated target under the approved temporary directory 2213ms
+   ✓ isolated integration database harness > does not remove a sibling database file it does not own 2160ms
+ ↓ tests/module3Classifier.live.test.ts (1 test | 1 skipped)
+ ✓ modules/module_07_hospital_intelligence/tests/suitability.test.ts (7 tests) 8ms
+ ✓ modules/module_02_speech_processing/tests/whisperDiagnostics.test.ts (2 tests) 22ms
+ ✓ modules/module_11_database_event_system/tests/analyticsLearningWrite.test.ts (5 tests) 12ms
+ ✓ tests/callDurationWatch.test.ts (5 tests) 12ms
+ ✓ tests/operatorClassificationRoute.test.ts (3 tests) 16ms
+ ✓ modules/module_09_corridor_coordination/tests/autoCorridorService.test.ts (7 tests) 16ms
+ ✓ modules/module_07_hospital_intelligence/tests/operatorRoutes.test.ts (8 tests) 362ms
+   ✓ Module 7 explicit hospital selection route > requires authentication and the dispatcher/admin action role 326ms
+ ✓ modules/module_06_ambulance_management/tests/assignmentDispatch.test.ts (4 tests) 12ms
+ ✓ modules/module10/module10/tests/lifecycleRoutes.test.ts (4 tests) 346ms
+   ✓ GET /api/emergencies/:id/lifecycle HTTP behavior > returns 200 with the existing lifecycle projection 332ms
+ ✓ modules/module_08_route_optimization/tests/config.test.ts (11 tests) 11ms
+ ✓ modules/module_09_corridor_coordination/tests/policeNotificationService.test.ts (3 tests) 13ms
+ ✓ modules/module_09_corridor_coordination/tests/policeNotificationRoutes.test.ts (1 test) 336ms
+   ✓ Module 9 simulated police notice routes > enforces dispatcher action roles and labels create/acknowledgement as simulated 334ms
+ ✓ tests/module11OperationalEventQuery.test.ts (2 tests) 388ms
+   ✓ GET /api/events durable operational event history > passes HOSPITAL_RESOURCE_UPDATED and ROUTE_RECALCULATED through the type filter with entityId scoping 368ms
+ ✓ modules/module_12_dashboard_analytics/tests/config.test.ts (4 tests) 9ms
+ ✓ modules/module_06_ambulance_management/tests/config.test.ts (6 tests) 9ms
+ ✓ tests/module4Config.test.ts (5 tests) 12ms
+ ✓ modules/module_09_corridor_coordination/tests/config.test.ts (7 tests) 11ms
+ ✓ modules/module_06_ambulance_management/tests/integration.test.ts (1 test) 2264ms
+ ✓ modules/module_06_ambulance_management/tests/assignment.test.ts (2 tests) 8ms
+ ✓ tests/demoServerSimulationFlags.test.ts (5 tests) 21ms
+ ✓ modules/module_07_hospital_intelligence/tests/config.test.ts (7 tests) 8ms
+ ✓ modules/module_12_dashboard_analytics/tests/integration.test.ts (2 tests) 2247ms
+ ✓ tests/module11EventQueryRoute.test.ts (1 test) 395ms
+   ✓ GET /api/events comma-separated type filter > accepts the filtered query produced by the dashboard client 394ms
+ ✓ modules/module_12_dashboard_analytics/tests/analytics.test.ts (1 test) 5ms
+ ✓ modules/module_06_ambulance_management/tests/fleet.test.ts (1 test) 7ms
+ ✓ modules/module_12_dashboard_analytics/tests/dashboard.test.ts (1 test) 5ms
+ ✓ tests/dashboardViteConfig.test.ts (1 test) 6ms
+ ✓ modules/module_11_database_event_system/tests/learningSampleSeedPolicy.test.ts (1 test) 3ms
+ ✓ modules/module_08_route_optimization/tests/routingProviders.test.ts (1 test) 3ms
+
+ Test Files  89 passed | 1 skipped (90)
+      Tests  855 passed | 1 skipped (856)
+   Start at  17:51:45
+   Duration  138.22s (transform 2.75s, setup 0ms, collect 20.56s, tests 82.45s, environment 26ms, prepare 13.77s)
+

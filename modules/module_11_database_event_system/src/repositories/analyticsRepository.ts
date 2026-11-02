@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import { guardDatabase } from '../db/client.js';
+import { AppError } from '@resus/core';
+import { guardDatabase, withTransaction } from '../db/client.js';
 import { parseJsonColumn, parseRecord } from '../models/mappers.js';
 
 /**
@@ -345,6 +346,7 @@ export class AnalyticsReadRepository {
         take: 2000,
         select: {
           emergencyId: true,
+          outcomeAssertionId: true,
           emergencyType: true,
           severity: true,
           responseTimeMin: true,
@@ -362,10 +364,30 @@ export class AnalyticsReadRepository {
           featuresJson: true,
           provenance: true,
           recordedAt: true,
-          emergency: { select: { isSimulation: true } },
+          emergency: {
+            select: {
+              isSimulation: true,
+              outcomeAssertions: {
+                where: { successor: null },
+                include: { reviews: { where: { successor: null } } },
+              },
+            },
+          },
         },
       });
-      return rows.map((row) => ({
+      const eligibleRows = rows.filter((row) => {
+        if (row.emergency.isSimulation) return options.includeSimulation && row.provenance === 'SIMULATION';
+        if (row.provenance !== 'REAL_OBSERVED') return false;
+        const currentAssertions = row.emergency.outcomeAssertions;
+        if (currentAssertions.length !== 1) return false;
+        const assertion = currentAssertions[0];
+        const currentReview = assertion?.reviews[0];
+        return Boolean(assertion && row.outcomeAssertionId === assertion.id && currentReview && assertion.dataClassification === 'OPERATIONAL' &&
+          assertion.provenance === 'REAL_OBSERVED' && assertion.category === row.outcomeStatus &&
+          assertion.survivalToDischarge === row.survivalToDischarge && currentReview.decision === 'APPROVED' &&
+          currentReview.eligibleForLearning);
+      });
+      return eligibleRows.map((row) => ({
         emergencyId: row.emergencyId,
         emergencyType: row.emergencyType,
         severity: row.severity,
@@ -410,8 +432,38 @@ export class AnalyticsReadRepository {
     provenance: string;
   }): Promise<void> {
     await guardDatabase(
-      async () => {
-        await this.db.learningSample.upsert({
+      async () => withTransaction(this.db, async (tx) => {
+        const emergency = await tx.emergency.findUnique({
+          where: { id: input.emergencyId },
+          select: { isSimulation: true },
+        });
+        if (!emergency) throw AppError.validation('Learning sample emergency was not found.');
+        if (emergency.isSimulation ? input.provenance !== 'SIMULATION' : input.provenance !== 'REAL_OBSERVED') {
+          throw AppError.validation('Learning sample provenance must match the persisted emergency simulation classification.');
+        }
+        let outcomeAssertionId: string | null = null;
+        if (input.provenance === 'REAL_OBSERVED') {
+          const currentAssertions = await tx.outcomeAssertion.findMany({
+            where: { emergencyId: input.emergencyId, successor: null },
+            include: { reviews: { where: { successor: null } } },
+          });
+          if (currentAssertions.length !== 1) {
+            throw AppError.validation('A real learning sample requires exactly one current, reviewed outcome assertion.');
+          }
+          const assertion = currentAssertions[0];
+          if (!assertion) throw AppError.validation('A real learning sample requires one eligible current outcome.');
+          const review = assertion.reviews[0];
+          if (
+            assertion.dataClassification !== 'OPERATIONAL' || assertion.provenance !== 'REAL_OBSERVED' ||
+            assertion.category !== input.outcomeStatus || assertion.survivalToDischarge !== (input.survivalToDischarge ?? null) ||
+            !review || review.decision !== 'APPROVED' || !review.eligibleForLearning
+          ) {
+            throw AppError.validation('Only the matching approved operational outcome may become a real learning sample.');
+          }
+          outcomeAssertionId = assertion.id;
+        }
+
+        await tx.learningSample.upsert({
           where: { emergencyId: input.emergencyId },
           // Both branches must name the mapped columns explicitly. Spreading
           // `input` here passed `features`, which is not a column on the model
@@ -420,6 +472,7 @@ export class AnalyticsReadRepository {
           create: {
             id: `LS-${input.emergencyId}`,
             emergencyId: input.emergencyId,
+            outcomeAssertionId,
             hospitalId: input.hospitalId ?? null,
             emergencyType: input.emergencyType,
             severity: input.severity,
@@ -440,6 +493,7 @@ export class AnalyticsReadRepository {
             recordedAt: new Date(),
           },
           update: {
+            outcomeAssertionId,
             emergencyType: input.emergencyType,
             severity: input.severity,
             responseTimeMin: input.responseTimeMin ?? null,
@@ -459,7 +513,7 @@ export class AnalyticsReadRepository {
             recordedAt: new Date(),
           },
         });
-      },
+      }),
       'Failed to store learning sample',
     );
   }

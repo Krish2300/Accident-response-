@@ -4,6 +4,12 @@ import type { FleetService } from '../fleetService.js';
 import type { AssignmentService } from '../assignment/assignmentService.js';
 import type { TrackingService } from '../tracking/trackingService.js';
 
+function parseDriverDecision<T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> {
+  const result = schema.safeParse(value ?? {});
+  if (!result.success) throw AppError.validation('The driver decision body is invalid.', { issues: result.error.issues });
+  return result.data;
+}
+
 export function createModule6Routes(
   fleet: FleetService,
   assignment: AssignmentService,
@@ -39,6 +45,8 @@ export function createModule6Routes(
   const dispatchBody = z.object({
     emergencyId: z.string().min(1),
   });
+  const driverAcceptBody = z.object({}).strict().optional();
+  const driverDeclineBody = z.object({ reason: z.string().trim().max(500).optional() }).strict().optional();
 
   /**
    * A driver may only report the position of the ambulance assigned to them.
@@ -52,7 +60,8 @@ export function createModule6Routes(
     const user = req.user;
     if (!user || (user.role !== 'DRIVER' && user.role !== 'AMBULANCE_DRIVER')) return;
     const assigned = await fleet.getAssignedAmbulanceForDriver(user.userId);
-    if (!assigned || assigned.id !== ambulanceId) {
+    const activeAssignment = await fleet.getDriverAssignment(user.userId);
+    if (!assigned || assigned.id !== ambulanceId || !activeAssignment || activeAssignment.ambulance.id !== ambulanceId || !['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'].includes(activeAssignment.assignment.status)) {
       throw new AppError(
         ErrorCode.FORBIDDEN,
         'This driver is not assigned to the ambulance being updated.',
@@ -122,7 +131,14 @@ export function createModule6Routes(
         const id = String(req.params.id);
         const body = locationUpdateBody.parse(req.body);
         await assertMayUpdateLocation(req, id);
-        const location = await tracking.updateLocation({ ambulanceId: id, ...body });
+        const ambulance = await fleet.getAmbulance(id);
+        const isDriver = req.user?.role === 'DRIVER' || req.user?.role === 'AMBULANCE_DRIVER';
+        const location = await tracking.updateLocation({
+          ambulanceId: id,
+          ...body,
+          source: isDriver ? 'MOBILE' : 'OPERATOR',
+          isSimulation: ambulance.isSimulation,
+        });
         return reply.send({ location });
       },
     },
@@ -140,6 +156,7 @@ export function createModule6Routes(
           latitude: body.latitude,
           longitude: body.longitude,
           maxDistanceKm: body.maxDistanceKm,
+          decidedByUserId: req.user?.userId ?? null,
         });
         return reply.send(result);
       },
@@ -154,7 +171,7 @@ export function createModule6Routes(
       handler: async (req, reply) => {
         const id = String(req.params.id);
         const body = dispatchBody.parse(req.body);
-        await fleet.dispatchAmbulance(id, body.emergencyId);
+        await fleet.dispatchAmbulance(id, body.emergencyId, req.user?.userId ?? null);
         return reply.send({ ok: true });
       },
     },
@@ -191,9 +208,45 @@ export function createModule6Routes(
         }
         const ambulance = await fleet.getAssignedAmbulanceForDriver(user.userId);
         if (!ambulance) {
-          return reply.send({ assigned: false, ambulance: null });
+          return reply.send({ assigned: false, ambulance: null, assignment: null });
         }
-        return reply.send({ assigned: true, ambulance });
+        const current = await fleet.getDriverAssignment(user.userId);
+        if (!current || current.ambulance.id !== ambulance.id) {
+          return reply.send({ assigned: false, ambulance: null, assignment: null });
+        }
+        return reply.send({ assigned: true, ambulance: current.ambulance, assignment: current.assignment });
+      },
+    },
+    {
+      method: 'POST',
+      url: '/api/drivers/me/assignment/:assignmentId/accept',
+      module: 'module_06',
+      summary: 'Accept the authenticated driver’s pending assignment',
+      auth: { roles: ['DRIVER', 'AMBULANCE_DRIVER'] },
+      params: z.object({ assignmentId: z.string().min(1).max(128) }).strict(),
+      handler: async (req, reply) => {
+        const user = req.user;
+        if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, 'Authentication required.', 401);
+        const { assignmentId } = z.object({ assignmentId: z.string().min(1).max(128) }).parse(req.params);
+        parseDriverDecision(driverAcceptBody, req.body);
+        const result = await fleet.respondToDriverAssignment({ assignmentId, driverId: user.userId, decision: 'ACCEPT' });
+        return reply.send({ assignment: result });
+      },
+    },
+    {
+      method: 'POST',
+      url: '/api/drivers/me/assignment/:assignmentId/decline',
+      module: 'module_06',
+      summary: 'Decline the authenticated driver’s pending assignment',
+      auth: { roles: ['DRIVER', 'AMBULANCE_DRIVER'] },
+      params: z.object({ assignmentId: z.string().min(1).max(128) }).strict(),
+      handler: async (req, reply) => {
+        const user = req.user;
+        if (!user) throw new AppError(ErrorCode.UNAUTHORIZED, 'Authentication required.', 401);
+        const { assignmentId } = z.object({ assignmentId: z.string().min(1).max(128) }).parse(req.params);
+        const { reason } = parseDriverDecision(driverDeclineBody, req.body) ?? {};
+        const result = await fleet.respondToDriverAssignment({ assignmentId, driverId: user.userId, decision: 'DECLINE', reason });
+        return reply.send({ assignment: result, reassignmentRequired: true });
       },
     },
   ];

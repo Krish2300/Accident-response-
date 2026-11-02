@@ -1,0 +1,1 @@
+ F:\\minor\\apps\\driver\\.dart_tool\\flutter_build\\d49e42701c72e89bd5d98c400b09d973\\native_assets.json: 

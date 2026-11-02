@@ -1,0 +1,171 @@
+{
+	"systeminfo": "WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "base",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"text": {
+			"ctx": 448,
+			"state": 512,
+			"head": 8,
+			"layer": 6
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:00:00,000",
+				"to": "00:00:30,000"
+			},
+			"offsets": {
+				"from": 0,
+				"to": 30000
+			},
+			"text": " I am calling from her main road.",
+			"tokens": [
+				{
+					"text": " I",
+					"timestamps": {
+						"from": "00:00:00,000",
+						"to": "00:00:01,070"
+					},
+					"offsets": {
+						"from": 0,
+						"to": 1070
+					},
+					"id": 314,
+					"p": 0.902542,
+					"t_dtw": -1
+				},
+				{
+					"text": " am",
+					"timestamps": {
+						"from": "00:00:01,070",
+						"to": "00:00:01,780"
+					},
+					"offsets": {
+						"from": 1070,
+						"to": 1780
+					},
+					"id": 716,
+					"p": 0.812306,
+					"t_dtw": -1
+				},
+				{
+					"text": " calling",
+					"timestamps": {
+						"from": "00:00:02,230",
+						"to": "00:00:02,230"
+					},
+					"offsets": {
+						"from": 2230,
+						"to": 2230
+					},
+					"id": 4585,
+					"p": 0.991305,
+					"t_dtw": -1
+				},
+				{
+					"text": " from",
+					"timestamps": {
+						"from": "00:00:02,230",
+						"to": "00:00:02,230"
+					},
+					"offsets": {
+						"from": 2230,
+						"to": 2230
+					},
+					"id": 422,
+					"p": 0.965648,
+					"t_dtw": -1
+				},
+				{
+					"text": " her",
+					"timestamps": {
+						"from": "00:00:02,230",
+						"to": "00:00:02,230"
+					},
+					"offsets": {
+						"from": 2230,
+						"to": 2230
+					},
+					"id": 607,
+					"p": 0.702226,
+					"t_dtw": -1
+				},
+				{
+					"text": " main",
+					"timestamps": {
+						"from": "00:00:02,230",
+						"to": "00:00:02,230"
+					},
+					"offsets": {
+						"from": 2230,
+						"to": 2230
+					},
+					"id": 1388,
+					"p": 0.928651,
+					"t_dtw": -1
+				},
+				{
+					"text": " road",
+					"timestamps": {
+						"from": "00:00:02,230",
+						"to": "00:00:02,230"
+					},
+					"offsets": {
+						"from": 2230,
+						"to": 2230
+					},
+					"id": 2975,
+					"p": 0.980228,
+					"t_dtw": -1
+				},
+				{
+					"text": ".",
+					"timestamps": {
+						"from": "00:00:02,230",
+						"to": "00:00:02,230"
+					},
+					"offsets": {
+						"from": 2230,
+						"to": 2230
+					},
+					"id": 13,
+					"p": 0.601205,
+					"t_dtw": -1
+				},
+				{
+					"text": "<|endoftext|>",
+					"timestamps": {
+						"from": "00:00:30,000",
+						"to": "00:00:30,000"
+					},
+					"offsets": {
+						"from": 30000,
+						"to": 30000
+					},
+					"id": 50256,
+					"p": 0.987155,
+					"t_dtw": -1
+				}
+			]
+		}
+	]
+}

@@ -6,6 +6,7 @@ import {
   confidenceBand,
   normaliseLanguageCode,
   type CallSession,
+  type AudioSegmentDiagnostics,
   type Database,
   type EventPublisherPort,
   type SpeechProvider,
@@ -139,6 +140,66 @@ describe('confidence policy', () => {
 // -- transcription ------------------------------------------------------------
 
 describe('transcribing a final utterance', () => {
+  it('forwards metadata-only diagnostics only for an explicitly marked synthetic session', async () => {
+    const requests: Array<{ diagnosticScope?: string; segmentDiagnostics?: AudioSegmentDiagnostics }> = [];
+    const segmentDiagnostics: AudioSegmentDiagnostics = {
+      segmentId: 'CALL-1:SEG-0001',
+      callRelativeStartMs: 120,
+      callRelativeEndMs: 280,
+      startedAt: '2026-01-01T00:00:00.000Z',
+      endedAt: '2026-01-01T00:00:00.160Z',
+      durationMs: 160,
+      sampleCount: 1_280,
+      boundaryReason: 'silence-hangover',
+      transcriptionOutcome: 'submitted',
+      frameCount: 8,
+      trailingSilenceFrameCount: 2,
+      frameRmsMin: 0,
+      frameRmsMean: 15_000,
+      frameRmsMax: 20_000,
+      frameRmsAboveThreshold: 6,
+      framePeakMin: 0,
+      framePeakMean: 15_000,
+      framePeakMax: 20_000,
+    };
+    const speech: SpeechProvider = {
+      providerName: 'spy',
+      isLive: true,
+      supportedLanguages: ['en'],
+      async transcribe(request) {
+        requests.push({ diagnosticScope: request.diagnosticScope, segmentDiagnostics: request.segmentDiagnostics });
+        return {
+          text: 'help',
+          language: request.language,
+          confidence: 0.95,
+          isFinal: request.isFinal,
+          providerName: 'spy',
+          isLive: true,
+        };
+      },
+    };
+    const { service, calls } = harness({ speech });
+
+    calls.session!.isSimulation = true;
+    await service.transcribe({
+      ...session,
+      audio: audioCarrier('synthetic PCM carrier'),
+      diagnosticScope: 'synthetic-test',
+      segmentDiagnostics,
+    });
+    calls.session!.isSimulation = false;
+    await service.transcribe({
+      ...session,
+      audio: audioCarrier('ordinary PCM carrier'),
+      diagnosticScope: 'synthetic-test',
+    });
+
+    expect(requests).toEqual([
+      { diagnosticScope: 'synthetic-test', segmentDiagnostics },
+      { diagnosticScope: undefined, segmentDiagnostics: undefined },
+    ]);
+  });
+
   it('stores the transcript and reports it accepted', async () => {
     const { service, calls, events } = harness();
 

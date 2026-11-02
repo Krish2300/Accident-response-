@@ -6,6 +6,7 @@ import type {
   EmergencyStatus,
   EquipmentCode,
   HospitalCapability,
+  HospitalResourceType,
   IncidentType,
   OutcomeStatus,
   ProtocolSessionStatus,
@@ -72,7 +73,7 @@ export interface AmbulanceAssignment {
   id: string;
   emergencyId: string;
   ambulanceId: string;
-  status: 'ASSIGNED' | 'DECLINED' | 'CANCELLED';
+  status: 'OFFERED' | 'ASSIGNED' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED' | 'DISPATCHED' | 'CANCELLED';
   source: AssignmentSource;
   distanceKm: number;
   estimatedResponseTimeMin: number;
@@ -83,6 +84,9 @@ export interface AmbulanceAssignment {
   decidedByUserId: string | null;
   decidedAt: string;
   createdAt: string;
+  offeredAt: string | null;
+  expiresAt: string | null;
+  consideredCandidates: number;
 }
 
 export interface Hospital {
@@ -98,6 +102,31 @@ export interface Hospital {
   address: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A countable or coded capability of a hospital (Module 7).
+ *
+ * `total` is the hospital's stated capacity for the resource; `available` is the
+ * last reported free count. For coded resources (`SPECIALIST`, `EQUIPMENT`)
+ * `code` names the specific specialty or equipment and the counts are typically
+ * 1/1. Availability is only ever as fresh as the last `HOSPITAL_RESOURCE_UPDATED`
+ * event, so a selection that depends on it must label the value as last-known.
+ */
+export interface HospitalResource {
+  id: string;
+  hospitalId: string;
+  resourceType: HospitalResourceType;
+  /** Empty string for countable resources (ICU bed), else the specific code. */
+  code: string;
+  total: number;
+  available: number;
+  updatedAt: string;
+}
+
+/** A hospital plus its resource rows, as Module 7 reads it for scoring. */
+export interface HospitalWithResources extends Hospital {
+  resources: HospitalResource[];
 }
 
 export interface ProtocolSession {

@@ -1,0 +1,165 @@
+## main...origin/master
+ M .env.example
+ M apps/driver/README.md
+ M apps/driver/lib/api/api_client.dart
+ M apps/driver/lib/models/ambulance.dart
+ M apps/driver/lib/screens/home_screen.dart
+ M apps/driver/lib/services/driver_service.dart
+ M apps/driver/lib/services/location_service.dart
+ M apps/server/src/app.ts
+ M apps/server/src/config.ts
+ M apps/server/src/http/routeAdapter.ts
+ M modules/module_01_emergency_call/src/api/routes.ts
+ M modules/module_01_emergency_call/src/callService.ts
+ M modules/module_01_emergency_call/src/config.ts
+ M modules/module_01_emergency_call/src/index.ts
+ M modules/module_01_emergency_call/src/module.ts
+ M modules/module_01_emergency_call/tests/callService.test.ts
+ M modules/module_02_speech_processing/src/config.ts
+ M modules/module_02_speech_processing/src/index.ts
+ M modules/module_02_speech_processing/src/module.ts
+ M modules/module_02_speech_processing/src/speechService.ts
+ M modules/module_02_speech_processing/tests/speechService.test.ts
+ M modules/module_05_bystander_assistance/src/api/routes.ts
+ M modules/module_05_bystander_assistance/src/index.ts
+ M modules/module_05_bystander_assistance/src/llm/contracts.ts
+ M modules/module_05_bystander_assistance/src/llm/heuristicProvider.ts
+ M modules/module_05_bystander_assistance/src/llm/prompts.ts
+ M modules/module_05_bystander_assistance/src/module.ts
+ M modules/module_05_bystander_assistance/tests/llm.test.ts
+ M modules/module_05_bystander_assistance/tests/sessionService.test.ts
+ M modules/module_06_ambulance_management/src/api/routes.ts
+ M modules/module_06_ambulance_management/src/assignment/assignmentService.ts
+ M modules/module_06_ambulance_management/src/config.ts
+ M modules/module_06_ambulance_management/src/fleetService.ts
+ M modules/module_06_ambulance_management/src/index.ts
+ M modules/module_06_ambulance_management/src/module.ts
+ M modules/module_06_ambulance_management/src/simulation/run.ts
+ M modules/module_06_ambulance_management/src/tracking/trackingService.ts
+ M modules/module_06_ambulance_management/tests/assignment.test.ts
+ M modules/module_06_ambulance_management/tests/integration.test.ts
+ M modules/module_11_database_event_system/prisma/schema.prisma
+ M modules/module_11_database_event_system/src/api/routes.ts
+ M modules/module_11_database_event_system/src/events/eventService.ts
+ M modules/module_11_database_event_system/src/index.ts
+ M modules/module_11_database_event_system/src/models/mappers.ts
+ M modules/module_11_database_event_system/src/module.ts
+ M modules/module_11_database_event_system/src/repositories/ambulanceRepository.ts
+ M modules/module_11_database_event_system/src/repositories/analyticsRepository.ts
+ M modules/module_11_database_event_system/src/repositories/callRepository.ts
+ M modules/module_11_database_event_system/src/repositories/emergencyRepository.ts
+ M modules/module_11_database_event_system/src/repositories/hospitalRepository.ts
+ M modules/module_11_database_event_system/src/repositories/protocolRepository.ts
+ M modules/module_11_database_event_system/src/seed/seed.ts
+ M modules/module_11_database_event_system/tests/transactionSafety.test.ts
+ M modules/module_12_dashboard_analytics/frontend/src/App.tsx
+ M modules/module_12_dashboard_analytics/frontend/src/api.ts
+ M modules/module_12_dashboard_analytics/src/analytics/analyticsService.ts
+ M modules/module_12_dashboard_analytics/src/api/routes.ts
+ M modules/module_12_dashboard_analytics/src/config.ts
+ M modules/module_12_dashboard_analytics/src/learning/learningService.ts
+ M modules/module_12_dashboard_analytics/tests/integration.test.ts
+ M package.json
+ M packages/core/src/domain/enums.ts
+ M packages/core/src/domain/events.ts
+ M packages/core/src/domain/models.ts
+ M packages/core/src/providerPorts.ts
+ M tests/driverGpsIntegration.test.ts
+ M tests/module01CallIntegration.test.ts
+ M tests/module02SpeechIntegration.test.ts
+ M tsconfig.json
+ M vitest.config.ts
+?? .resus-p4-offline-new-20261023/
+?? MicroSIP-3.22.20.exe
+?? MicroSIP/
+?? apps/dashboard/index.html
+?? apps/dashboard/src/
+?? apps/dashboard/vite.config.ts
+?? apps/driver/test/driver_contracts_test.dart
+?? apps/server/src/app.ts.fixed
+?? apps/server/src/asterisk/
+?? apps/server/src/conversation/
+?? apps/server/src/nlp/
+?? artifacts/
+?? docs/CONVERSATION_E2E_TEST_REPORT.md
+?? docs/DEPLOYMENT_CONSISTENCY_REPORT.md
+?? docs/FINAL_ACCEPTANCE_REPORT.md
+?? docs/FINAL_DEMO_WALKTHROUGH.md
+?? docs/MALAYALAM_AUDIO_REVIEW_HANDOFF.md
+?? docs/MODULE5_DISCONNECT_POLICY_DECISION.md
+?? docs/PRODUCTION_READINESS_AUDIT.md
+?? docs/STAGE_4_19_DEMO_GUIDE.md
+?? docs/TELEPHONY_E2E_TEST_REPORT.md
+?? docs/asterisk-setup.md
+?? "modules/Module 7_Zipped/"
+?? "modules/Module 8/"
+?? modules/Module_2_Zipped/
+?? modules/module10/
+?? modules/module3_emergency_nlp/
+?? modules/module5/
+?? modules/module_01_emergency_call/src/telephony/asterisk/
+?? modules/module_01_emergency_call/src/telephony/asteriskIntake.ts
+?? modules/module_01_emergency_call/src/telephony/asteriskProvider.ts
+?? modules/module_01_emergency_call/tests/asteriskProtocols.test.ts
+?? modules/module_01_emergency_call/tests/audioBridgeConversation.test.ts
+?? modules/module_01_emergency_call/tests/audioBridgeSilence.test.ts
+?? modules/module_01_emergency_call/tests/syntheticTimingMarkers.test.ts
+?? modules/module_02_speech_processing/src/providers/audioFormat.ts
+?? modules/module_02_speech_processing/src/providers/espeakProvider.ts
+?? modules/module_02_speech_processing/src/providers/subprocess.ts
+?? modules/module_02_speech_processing/src/providers/whisperProvider.ts
+?? modules/module_02_speech_processing/tests/realSpeechProviders.test.ts
+?? modules/module_02_speech_processing/tests/whisperDiagnostics.test.ts
+?? modules/module_05_bystander_assistance/src/session/orchestration.ts
+?? modules/module_06_ambulance_management/src/dispatch/
+?? modules/module_06_ambulance_management/tests/assignmentDispatch.test.ts
+?? modules/module_06_ambulance_management/tests/autoDispatch.integration.test.ts
+?? modules/module_06_ambulance_management/tests/autoDispatch.test.ts
+?? modules/module_06_ambulance_management/tests/config.test.ts
+?? modules/module_06_ambulance_management/tests/driverAssignmentRoutes.test.ts
+?? modules/module_07_hospital_intelligence/
+?? modules/module_08_route_optimization/
+?? modules/module_09_corridor_coordination/
+?? modules/module_11_database_event_system/prisma/migrations/20261018170000_outcome_history_foundation/
+?? modules/module_11_database_event_system/prisma/migrations/20261018180000_outcome_correction_reason/
+?? modules/module_11_database_event_system/prisma/migrations/20261018190000_outcome_review_reason/
+?? modules/module_11_database_event_system/prisma/migrations/20261018193000_learning_sample_outcome_link/
+?? modules/module_11_database_event_system/prisma/migrations/20261021120000_outcome_access_grants/
+?? modules/module_11_database_event_system/src/repositories/notificationRepository.ts
+?? modules/module_11_database_event_system/src/seed/learningSampleSeedPolicy.ts
+?? modules/module_11_database_event_system/tests/ambulanceAssignmentDecision.test.ts
+?? modules/module_11_database_event_system/tests/analyticsLearningWrite.test.ts
+?? modules/module_11_database_event_system/tests/learningSampleSeedPolicy.test.ts
+?? modules/module_11_database_event_system/tests/outcomeHistory.integration.test.ts
+?? modules/module_11_database_event_system/tests/simulatedPoliceNotificationRepository.test.ts
+?? modules/module_12_dashboard_analytics/tests/config.test.ts
+?? modules/module_12_dashboard_analytics/tests/dashboardFrontend.test.ts
+?? modules/module_12_dashboard_analytics/tests/learning.test.ts
+?? modules/module_4/
+?? modules/module_9/
+?? scripts/demo-server.ts
+?? scripts/demo-verify.ts
+?? scripts/provision-demo-accounts.ts
+?? tests/asteriskConversationController.test.ts
+?? tests/asteriskSpeechPipeline.test.ts
+?? tests/callDurationWatch.test.ts
+?? tests/dashboardLiveProxy.integration.test.ts
+?? tests/dashboardViteConfig.test.ts
+?? tests/helpers/
+?? tests/module11EventQueryRoute.test.ts
+?? tests/module11OperationalEventQuery.test.ts
+?? tests/module3Classifier.live.test.ts
+?? tests/module3Classifier.test.ts
+?? tests/module4Config.test.ts
+?? tests/module4ControllerLocalisation.test.ts
+?? tests/module4ConversationSupport.test.ts
+?? tests/module4Localizer.test.ts
+?? tests/nlpClassifyRoute.test.ts
+?? tests/operatorClassificationRoute.test.ts
+?? tests/outcomeAccessGrants.integration.test.ts
+?? tests/outcomeApi.integration.test.ts
+?? tests/outcomeEmergencyScope.integration.test.ts
+?? tests/outcomeGrantAudit.integration.test.ts
+?? tests/protocolTurnOrchestrator.test.ts
+?? tests/serverCompositionAmbulanceWorkflow.integration.test.ts
+?? tests/serverCompositionOperationalEvents.integration.test.ts

@@ -136,14 +136,24 @@ export function createModule5Routes(module5: Module5): RouteDefinition<any>[] {
       body: utteranceBody,
       handler: async (request, reply) => {
         const body = utteranceBody.parse(request.body);
-        return reply.send(
-          await sessions.handleUtterance({
-            sessionId: String(request.params.id ?? ''),
+        const sessionId = String(request.params.id ?? '');
+        const decide = () =>
+          sessions.handleUtterance({
+            sessionId,
             utterance: body.utterance,
             // No forceEscalationReason: this route is the bystander's, and
             // escalating is the operator route's job.
-          }),
-        );
+          });
+        // When the composition root wired an orchestrator, the caller's words
+        // are persisted into the call transcript and the spoken reply is
+        // synthesised around Module 5's decision. Without one (unit tests,
+        // protocol-only sessions) the decision is returned as-is; the clinical
+        // outcome is identical either way because the orchestrator never
+        // replaces `decide`.
+        const turn = module5.turnOrchestrator
+          ? await module5.turnOrchestrator.orchestrateTurn({ sessionId, utterance: body.utterance, decide })
+          : await decide();
+        return reply.send(turn);
       },
     },
     {

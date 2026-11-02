@@ -1,12 +1,11 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { execFileSync } from 'node:child_process';
-import { existsSync, rmSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { createModule11, type Module11 } from '../src/module.js';
 import { withTransaction } from '../src/db/client.js';
 import { AppError, defineEvent, type SystemEventRecord } from '@resus/core';
+import { createIsolatedTestDatabase, type IsolatedTestDatabase } from '../../../tests/helpers/isolatedTestDatabase.js';
 
 /**
  * Transaction-safety tests for the event spine.
@@ -24,50 +23,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../..');
 const prismaDir = resolve(here, '../prisma');
 const schemaPath = resolve(prismaDir, 'schema.prisma');
-const prismaCli = resolve(repoRoot, 'node_modules/prisma/build/index.js');
-const devDbPath = resolve(prismaDir, 'dev.db');
-const dbPath = resolve(prismaDir, 'test-events.db');
-const dbUrl = `file:${dbPath.replace(/\\/g, '/')}`;
-
-function removeDatabaseFiles(path: string): void {
-  if (existsSync(path)) rmSync(path, { force: true });
-  for (const entry of existsSync(path) ? readdirSync(prismaDir) : []) {
-    if (entry.startsWith(`${path.split(/[\\/]/).pop()}-`)) {
-      rmSync(resolve(prismaDir, entry), { force: true });
-    }
-  }
-}
-
 let db: PrismaClient;
 let module11: Module11;
 let received: SystemEventRecord[];
 let unsubscribe: () => void;
+let testDatabase: IsolatedTestDatabase;
 
 beforeAll(async () => {
-  removeDatabaseFiles(dbPath);
-
-  // `process.env` must be set before Prisma is constructed: it resolves
-  // DATABASE_URL at construction time and gives `.env` lower priority.
-  process.env.DATABASE_URL = dbUrl;
-
-  // Invoke the Prisma CLI through node directly: `npx` is not a resolvable
-  // bare binary on Windows.
-  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schemaPath], {
-    cwd: repoRoot,
-    env: { ...process.env, DATABASE_URL: dbUrl },
-    stdio: 'pipe',
-  });
-
+  testDatabase = await createIsolatedTestDatabase({ repoRoot, schemaPath });
+  const dbUrl = testDatabase.databaseUrl;
   db = new PrismaClient({ datasources: { db: { url: dbUrl } } });
-
-  // Guard: prove we are not pointed at the development database before writing.
-  const probe = await db.$queryRawUnsafe<Array<{ name: string; file: string }>>('PRAGMA database_list');
-  const target = probe.find((row) => row.name === 'main')?.file ?? '';
-  if (target && resolve(target) === resolve(devDbPath)) {
-    throw new Error(
-      `Refusing to run: the test database resolved to the development database (${devDbPath}).`,
-    );
-  }
 
   module11 = createModule11({ db, ownsClient: false });
   received = [];
@@ -79,7 +44,7 @@ beforeAll(async () => {
 afterAll(async () => {
   unsubscribe?.();
   await db?.$disconnect();
-  removeDatabaseFiles(dbPath);
+  testDatabase?.cleanup();
 });
 
 function emergency(id: string) {

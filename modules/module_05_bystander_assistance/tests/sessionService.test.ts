@@ -210,6 +210,8 @@ function extraction(entities: Partial<Extraction['entities']>, intent: Extractio
       scene_safe: 'UNKNOWN',
       caller_with_patient: 'UNKNOWN',
       age_group: 'UNKNOWN',
+      caller_location: null,
+      cpr_started: 'UNKNOWN',
       patient_count: null,
       mechanism: null,
       duration_minutes: null,
@@ -443,5 +445,170 @@ describe('protocol session service', () => {
     // The caller must hear "do not approach", not the step they were on.
     expect(turn.speech).toMatch(/do not approach/i);
     expect(turn.currentStepId).toBe('scene-unsafe');
+  });
+
+  it('advances past call-emergency-services when the caller states a location', async () => {
+    // Regression guard: the `call-emergency-services` step gates on
+    // `caller_location exists`, so without extraction of that fact the
+    // protocol loops on the same step forever. The whole conversation runs
+    // through the real HeuristicProvider because that is what is live when
+    // the LLM is down.
+    const { module5 } = build({ useHeuristicFallback: true });
+    const started = await module5.sessions.start({ emergencyId: 'EMG_17', protocolId: 'cardiac-arrest-adult' });
+
+    // Drive through confirm-arrest and check-scene-safety.
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'he is unresponsive and not breathing',
+    });
+    const atScene = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'the area is safe',
+    });
+    expect(atScene.currentStepId).toBe('call-emergency-services');
+
+    // The caller states a location; the protocol must advance, not loop.
+    const turn = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'I am at twelve main street',
+    });
+
+    expect(turn.session.collectedFacts.caller_location).toBe('twelve main street');
+    expect(turn.action).toBe('ADVANCED');
+    expect(turn.currentStepId).toBe('start-compressions');
+  });
+
+  it('advances general-triage past confirm-location when the caller answers the location question', async () => {
+    // Regression for the live non-advancement (Stage D): `confirm-location` is
+    // the entry step of `general-triage` and gates on `caller_location exists`.
+    // A caller answering the protocol's own question in the shape it was asked
+    // ("the exact location is ...") must collect the fact and advance; before
+    // the fix that answer was dropped and the session looped on the same step
+    // with the address never reaching dispatch. The whole conversation runs
+    // through the real HeuristicProvider, which is the provider in use while
+    // the language model is unreachable.
+    const { module5 } = build({ useHeuristicFallback: true });
+    const started = await module5.sessions.start({ emergencyId: 'EMG_20', protocolId: 'general-triage' });
+    expect(started.session.currentStep).toBe('confirm-location');
+
+    const utterance = 'the exact location is building alpha, floor two, near the main gate';
+    const turn = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance,
+    });
+
+    // The caller's own words, verbatim, with the floor and landmark intact.
+    expect(turn.session.collectedFacts.caller_location).toBe(
+      'building alpha, floor two, near the main gate',
+    );
+    expect(turn.action).toBe('ADVANCED');
+    expect(turn.currentStepId).toBe('confirm-safety');
+    expect(turn.escalationRequired).not.toBe(true);
+  });
+
+  it('keeps general-triage on confirm-location when the location answer is vague or unknown', async () => {
+    // Safety direction: broadening the pattern must not let a non-answer move
+    // the protocol. "unknown" / "here" are not addresses, so the session stays
+    // put and asks again — it never advances on a guess.
+    for (const [emergencyId, utterance] of [
+      ['EMG_21', 'the exact location is unknown'],
+      ['EMG_22', 'the exact location is here'],
+      ['EMG_23', 'I do not know the location yet'],
+    ] as const) {
+      const { module5 } = build({ useHeuristicFallback: true });
+      const started = await module5.sessions.start({ emergencyId, protocolId: 'general-triage' });
+      expect(started.session.currentStep).toBe('confirm-location');
+
+      const turn = await module5.sessions.handleUtterance({
+        sessionId: started.session.id,
+        utterance,
+      });
+
+      expect(turn.session.collectedFacts.caller_location ?? null, utterance).toBeNull();
+      expect(turn.action, utterance).not.toBe('ADVANCED');
+      expect(turn.currentStepId, utterance).toBe('confirm-location');
+    }
+  });
+
+  it('advances past start-compressions when the caller states they began CPR', async () => {
+    // Regression guard: the `start-compressions` step gates on
+    // `cpr_started eq YES`, so without extraction of that fact the protocol
+    // loops on the same step however many times the caller says they are
+    // pushing. End-to-end over the real HeuristicProvider.
+    const { module5 } = build({ useHeuristicFallback: true });
+    const started = await module5.sessions.start({ emergencyId: 'EMG_18', protocolId: 'cardiac-arrest-adult' });
+
+    // Drive through confirm-arrest and check-scene-safety.
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'he is unresponsive and not breathing',
+    });
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'the area is safe',
+    });
+    // Drive through call-emergency-services.
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'I am at twelve main street',
+    });
+
+    // The caller states they began compressions; the protocol must advance.
+    const turn = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'yes I am doing chest compressions now',
+    });
+
+    expect(turn.session.collectedFacts.cpr_started).toBe('YES');
+    expect(turn.action).toBe('ADVANCED');
+    expect(turn.currentStepId).toBe('compressions-and-breaths');
+  });
+
+  it('does not advance on an ambiguous CPR mention or a vague location', async () => {
+    // Safety direction: an inference the caller never made must not move the
+    // protocol. A question ("should I do compressions?") is not a statement
+    // that compressions have started; "here" is not an address. The protocol
+    // must stay put and ask again, never advance on a guess.
+    const { module5 } = build({ useHeuristicFallback: true });
+    const started = await module5.sessions.start({ emergencyId: 'EMG_19', protocolId: 'cardiac-arrest-adult' });
+
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'he is unresponsive and not breathing',
+    });
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'the area is safe',
+    });
+
+    // Vague location: "here" must not satisfy `caller_location exists`.
+    const vague = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'I am here',
+    });
+    expect(vague.session.collectedFacts.caller_location ?? null).toBeNull();
+    expect(vague.currentStepId).toBe('call-emergency-services');
+
+    // Real location advances.
+    await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'the address is twelve main street',
+    });
+
+    // Ambiguous CPR question: must not satisfy `cpr_started eq YES`.
+    const ambiguous = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'should I do compressions?',
+    });
+    expect(ambiguous.session.collectedFacts.cpr_started ?? 'UNKNOWN').toBe('UNKNOWN');
+    expect(ambiguous.currentStepId).toBe('start-compressions');
+
+    // Explicit CPR statement advances.
+    const turn = await module5.sessions.handleUtterance({
+      sessionId: started.session.id,
+      utterance: 'I started chest compressions',
+    });
+    expect(turn.session.collectedFacts.cpr_started).toBe('YES');
+    expect(turn.currentStepId).toBe('compressions-and-breaths');
   });
 });

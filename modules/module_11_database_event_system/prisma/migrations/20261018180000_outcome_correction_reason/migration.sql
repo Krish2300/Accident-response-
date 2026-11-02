@@ -1,0 +1,1 @@
+ALTER TABLE "outcome_assertions" ADD COLUMN "correctionReasonCode" TEXT;

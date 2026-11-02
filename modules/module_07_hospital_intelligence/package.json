@@ -1,0 +1,16 @@
+{
+  "name": "@resus/module_07_hospital_intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 7 — hospital intelligence. Scores candidate hospitals for an emergency against their declared capabilities and last-reported resource availability, then records the choice. Never imports database internals; reads and writes through module 11 ports.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src"
+  ],
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

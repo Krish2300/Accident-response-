@@ -1,0 +1,97 @@
+{
+  "scope": "synthetic-only; no call; human intelligibility unverified",
+  "settings": {
+    "voice": "en-gb",
+    "speedWpm": 145,
+    "pitch": 50,
+    "amplitude": 110,
+    "model": "ggml-base.en.bin",
+    "language": "en",
+    "threads": 4,
+    "translation": false,
+    "jsonMode": "-ojf",
+    "noTimestamps": true
+  },
+  "results": [
+    {
+      "sample": 1,
+      "inputSha256": "129608f54fedefbc2feb7b5d954bbcd25f55d6d60d890503e74d20252fd03760",
+      "sourceRateHz": 22050,
+      "sourceChannels": 1,
+      "providerResampleTargetHz": 16000,
+      "directPreparedRateHz": 16000,
+      "preparedBytes": 102642,
+      "directInferenceMs": 2218,
+      "providerInferenceMs": 1846,
+      "direct": {
+        "exact": true,
+        "normalized": true
+      },
+      "provider": {
+        "exact": true,
+        "normalized": true
+      },
+      "outputsEqualExact": true,
+      "outputsEqualNormalized": true,
+      "confidenceDirect": 0.7545337777777777,
+      "confidenceProvider": 0.7545337777777777,
+      "inferenceFailure": null
+    },
+    {
+      "sample": 2,
+      "inputSha256": "d7eb8f85fb86909b50461910cfb010edf2effb8f004a01b3f9be63527b1f54d1",
+      "sourceRateHz": 22050,
+      "sourceChannels": 1,
+      "providerResampleTargetHz": 16000,
+      "directPreparedRateHz": 16000,
+      "preparedBytes": 101256,
+      "directInferenceMs": 1732,
+      "providerInferenceMs": 1767,
+      "direct": {
+        "exact": false,
+        "normalized": false
+      },
+      "provider": {
+        "exact": false,
+        "normalized": false
+      },
+      "outputsEqualExact": true,
+      "outputsEqualNormalized": true,
+      "confidenceDirect": 0.7716168181818183,
+      "confidenceProvider": 0.7716168181818183,
+      "inferenceFailure": null
+    },
+    {
+      "sample": 3,
+      "inputSha256": "c90f2fc64ab112365776f687210c6bf06ee3f216f67098d7050b80650044ecb2",
+      "sourceRateHz": 22050,
+      "sourceChannels": 1,
+      "providerResampleTargetHz": 16000,
+      "directPreparedRateHz": 16000,
+      "preparedBytes": 106160,
+      "directInferenceMs": 1730,
+      "providerInferenceMs": 1787,
+      "direct": {
+        "exact": false,
+        "normalized": false
+      },
+      "provider": {
+        "exact": false,
+        "normalized": false
+      },
+      "outputsEqualExact": true,
+      "outputsEqualNormalized": true,
+      "confidenceDirect": 0.646332,
+      "confidenceProvider": 0.646332,
+      "inferenceFailure": null
+    }
+  ],
+  "summary": {
+    "inferenceFailures": 0,
+    "directExact": 1,
+    "directNormalized": 1,
+    "providerExact": 1,
+    "providerNormalized": 1,
+    "normalizedOutputAgreement": 3
+  }
+}

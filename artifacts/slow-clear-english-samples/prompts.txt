@@ -1,0 +1,3 @@
+Emergency line. Tell me what happened.
+Please tell me where you are. You can give me the area name, road name, or a nearby landmark.
+The training address is fourteen River Road, near the clock tower.

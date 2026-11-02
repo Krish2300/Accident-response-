@@ -4,15 +4,25 @@ import type { AnalyticsService } from '../analytics/analyticsService.js';
 import type { DashboardService } from '../dashboard/dashboardService.js';
 import type { LearningService } from '../learning/learningService.js';
 
+export const includeSimulationQuerySchema = z.preprocess((value: unknown) => {
+  if (typeof value !== 'string') return value;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return value;
+}, z.boolean().optional());
+
+export const dashboardQuerySchema = z.object({
+  windowDays: z.coerce.number().int().positive().optional(),
+  includeSimulation: includeSimulationQuerySchema,
+});
+
 export function createModule12Routes(
   analytics: AnalyticsService,
   dashboard: DashboardService,
   learning: LearningService,
 ): RouteDefinition<any>[] {
-  const querySchema = z.object({
-    windowDays: z.coerce.number().int().positive().optional(),
-    includeSimulation: z.coerce.boolean().optional(),
-  });
+  const querySchema = dashboardQuerySchema;
 
   return [
     {
@@ -34,9 +44,9 @@ export function createModule12Routes(
       module: 'module_12',
       summary: 'Get live state',
       auth: { roles: ['OPERATOR', 'DISPATCHER', 'ADMIN'] },
-      query: z.object({ includeSimulation: z.coerce.boolean().optional() }),
+      query: z.object({ includeSimulation: includeSimulationQuerySchema }),
       handler: async (req, reply) => {
-        const query = z.object({ includeSimulation: z.coerce.boolean().optional() }).parse(req.query);
+        const query = z.object({ includeSimulation: includeSimulationQuerySchema }).parse(req.query);
         const live = await dashboard.getLiveState(query.includeSimulation);
         return reply.send(live);
       },
@@ -73,9 +83,9 @@ export function createModule12Routes(
       module: 'module_12',
       summary: 'Get ambulance status',
       auth: { roles: ['OPERATOR', 'DISPATCHER', 'ADMIN'] },
-      query: z.object({ includeSimulation: z.coerce.boolean().optional() }),
+      query: z.object({ includeSimulation: includeSimulationQuerySchema }),
       handler: async (req, reply) => {
-        const query = z.object({ includeSimulation: z.coerce.boolean().optional() }).parse(req.query);
+        const query = z.object({ includeSimulation: includeSimulationQuerySchema }).parse(req.query);
         const live = await dashboard.getLiveState(query.includeSimulation);
         return reply.send({ ambulances: live.ambulances });
       },

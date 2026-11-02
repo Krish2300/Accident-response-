@@ -12,7 +12,7 @@ export { EventService, type EventServiceDeps } from './events/eventService.js';
 export { createModule11Routes } from './api/routes.js';
 export { loadModule11Config, type Module11Config } from './config.js';
 
-export { EmergencyRepository, type EventCarrier, type ActorContext } from './repositories/emergencyRepository.js';
+export { EmergencyRepository, type EventCarrier, type ActorContext, type CallerLocationCandidateInput } from './repositories/emergencyRepository.js';
 export {
   AmbulanceRepository,
   type AmbulanceCreateInput,
@@ -24,6 +24,12 @@ export {
   ProtocolRepository,
   DecisionRepository,
   OutcomeRepository,
+  type OutcomeAssertionRecord,
+  type OutcomeHistoryRecord,
+  type OutcomeReviewRecord,
+  type OutcomeReviewReasonCode,
+  type OutcomeDataClassification,
+  type OutcomeReviewDecision,
   type NewProtocolSessionInput,
 } from './repositories/protocolRepository.js';
 export {
@@ -32,7 +38,16 @@ export {
   type CallSessionRecord,
   type TranscriptRecord,
   type RouteRecord,
+  type CorridorRecord,
+  type CorridorActivationInput,
+  type CorridorActivationResult,
+  type CorridorReleaseResult,
 } from './repositories/callRepository.js';
+export {
+  NotificationRepository,
+  type NotificationCreateInput,
+  type NotificationRecord,
+} from './repositories/notificationRepository.js';
 export { UserRepository, type UserRecord } from './repositories/userRepository.js';
 export {
   AnalyticsReadRepository,
@@ -65,6 +80,7 @@ export {
   mapDecision,
   mapEmergency,
   mapHospital,
+  mapHospitalResource,
   mapOutcome,
   mapProtocolSession,
   mapProtocolStep,

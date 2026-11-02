@@ -1,0 +1,7 @@
+COMMAND: flutter analyze --no-pub (source mirror)
+START_UTC: 2026-10-25T11:20:03.7343338Z
+Analyzing driver-validation-copy...                             
+No issues found! (ran in 7.3s)
+
+EXIT_CODE: 0
+END_UTC: 2026-10-25T11:20:14.5699643Z

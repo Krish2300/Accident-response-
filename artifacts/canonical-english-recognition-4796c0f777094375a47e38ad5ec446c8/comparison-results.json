@@ -1,0 +1,311 @@
+{
+  "experimentId": "4796c0f777094375a47e38ad5ec446c8",
+  "type": "NEWLY AUTHORIZED CANONICAL SET; not a reproduction of the missing original set",
+  "normalization": "NFKC, lowercase, Unicode punctuation/symbols replaced by spaces, whitespace collapsed, trim; exact comparison trims outer whitespace only.",
+  "inference": {
+    "runtime": "/home/resus/whisper.cpp/build/bin/whisper-cli",
+    "model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+    "language": "en",
+    "threads": 4,
+    "translation": false,
+    "jsonFlag": "-ojf",
+    "noTimestamps": true,
+    "directPreparedWith": "same repository decodeAudio/resampleMono16/encodeWav helpers used internally by WhisperSpeechProvider",
+    "provider": "actual repository WhisperSpeechProvider; input is original eSpeak WAV; provider resamples to 16 kHz mono WAV"
+  },
+  "samples": [
+    {
+      "number": 1,
+      "file": "sample-01.wav",
+      "expected": "Hello, can you hear me?",
+      "inputSha256": "c494362f94715688c6f8eb29178c1cd9a1bd40c4992735cf184f516577e631f7",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 2.0863945578231293,
+        "bytes": 92054
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 66808,
+        "sha256": "b1e52f2fa25f3c379ab2f42edbe0f84c4ebee6802962e23363025c576fe6d562"
+      },
+      "direct": {
+        "transcript": "Hello, can you hear me?",
+        "exact": true,
+        "normalized": true,
+        "confidence": 0.876954375,
+        "inferenceMs": 2031,
+        "error": null
+      },
+      "provider": {
+        "transcript": "Hello, can you hear me?",
+        "exact": true,
+        "normalized": true,
+        "confidence": 0.876954375,
+        "inferenceMs": 1722,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    },
+    {
+      "number": 2,
+      "file": "sample-02.wav",
+      "expected": "I need help, please.",
+      "inputSha256": "ac3d5bc5b5529d7f18f38ced86b1c6d5f3ef1a2f7480c94a5a6a1499290a52ed",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 2.0819954648526076,
+        "bytes": 91860
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 66668,
+        "sha256": "e8165e48cd52638bc03792d133e7fbe19decd9e4e56c47b1e7440a7a7bf2e5ea"
+      },
+      "direct": {
+        "transcript": "I need help, please.",
+        "exact": true,
+        "normalized": true,
+        "confidence": 0.8455988571428571,
+        "inferenceMs": 1644,
+        "error": null
+      },
+      "provider": {
+        "transcript": "I need help, please.",
+        "exact": true,
+        "normalized": true,
+        "confidence": 0.8455988571428571,
+        "inferenceMs": 1655,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    },
+    {
+      "number": 3,
+      "file": "sample-03.wav",
+      "expected": "I am calling from the main road.",
+      "inputSha256": "ae85ddf8d894601b3ab858ebaa94c5ae49d83aecb2c771409022ff2bf83de75d",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 2.237641723356009,
+        "bytes": 98724
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 71648,
+        "sha256": "7988e6c36951a6501e7c8e33061b8f3c30209bc161ac5ab0b202487063b3c30b"
+      },
+      "direct": {
+        "transcript": "I am calling from her main road.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.8745851111111111,
+        "inferenceMs": 1715,
+        "error": null
+      },
+      "provider": {
+        "transcript": "I am calling from her main road.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.8745851111111111,
+        "inferenceMs": 1666,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    },
+    {
+      "number": 4,
+      "file": "sample-04.wav",
+      "expected": "The nearest landmark is the bus station.",
+      "inputSha256": "97cec591fdf6554ffbbb94bf39c5f96504f2adf241ec794523e100e62922e0a5",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 2.837142857142857,
+        "bytes": 125162
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 90832,
+        "sha256": "bc3db28fdf1ad9e7970ed375c4450c980c6715cdda3e2370f678aa2b068f6cf8"
+      },
+      "direct": {
+        "transcript": "The nearest landmark is the Mustation.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.6926704444444445,
+        "inferenceMs": 1788,
+        "error": null
+      },
+      "provider": {
+        "transcript": "The nearest landmark is the Mustation.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.6926704444444445,
+        "inferenceMs": 1786,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    },
+    {
+      "number": 5,
+      "file": "sample-05.wav",
+      "expected": "The house number is twenty-four.",
+      "inputSha256": "89243f180e5dd880668349cc90f53b64eeb61bf26b8c8636c2c084988c2c3dda",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 2.3836281179138323,
+        "bytes": 105162
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 76320,
+        "sha256": "a0d0a847de67929ac6ff5ef8c1eab0396ab36f2a72c44aa7cb1eac9f78915854"
+      },
+      "direct": {
+        "transcript": "The house number is 24.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.7976018571428571,
+        "inferenceMs": 1667,
+        "error": null
+      },
+      "provider": {
+        "transcript": "The house number is 24.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.7976018571428571,
+        "inferenceMs": 1651,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    },
+    {
+      "number": 6,
+      "file": "sample-06.wav",
+      "expected": "Please send the information to the operator.",
+      "inputSha256": "b0249ae01950e7c16752c6369248ce2174b430c03fed0af83a2c1ce265f59100",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 3.081043083900227,
+        "bytes": 135918
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 98638,
+        "sha256": "e7354624aeb5217e8107989c8c83ec67a5cc6b54d92ca710868bb904212843c9"
+      },
+      "direct": {
+        "transcript": "Please send the information to the operator.",
+        "exact": true,
+        "normalized": true,
+        "confidence": 0.8487207777777778,
+        "inferenceMs": 1742,
+        "error": null
+      },
+      "provider": {
+        "transcript": "Please send the information to the operator.",
+        "exact": true,
+        "normalized": true,
+        "confidence": 0.8487207777777778,
+        "inferenceMs": 1735,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    },
+    {
+      "number": 7,
+      "file": "sample-07.wav",
+      "expected": "I will stay here and answer your questions.",
+      "inputSha256": "604337645ae9c5aa6d2252d99459c32637d3fc52c2198e5d9653c3d25b757600",
+      "source": {
+        "sampleRateHz": 22050,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "durationSeconds": 3.12702947845805,
+        "bytes": 137946
+      },
+      "providerPrepared": {
+        "sampleRateHz": 16000,
+        "channels": 1,
+        "bitsPerSample": 16,
+        "bytes": 100108,
+        "sha256": "5641325b1583fdea4fd61f0234b98ebde39ebc3b71aaa3f35cd7ef5f7aa03c3c"
+      },
+      "direct": {
+        "transcript": "I will stay here and answer your question.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.8506948000000001,
+        "inferenceMs": 1766,
+        "error": null
+      },
+      "provider": {
+        "transcript": "I will stay here and answer your question.",
+        "exact": false,
+        "normalized": false,
+        "confidence": 0.8506948000000001,
+        "inferenceMs": 1756,
+        "error": null
+      },
+      "agreement": {
+        "exact": true,
+        "normalized": true
+      }
+    }
+  ],
+  "summary": {
+    "samples": 7,
+    "directFailures": 0,
+    "providerFailures": 0,
+    "directExact": 3,
+    "directNormalized": 3,
+    "providerExact": 3,
+    "providerNormalized": 3,
+    "exactAgreement": 7,
+    "normalizedAgreement": 7
+  },
+  "humanReview": "NOT REVIEWED; checklist fields remain blank",
+  "originalSevenPhraseAcceptanceGate": "UNRESOLVED; this new canonical experiment is separate and cannot retroactively reproduce or satisfy the missing original set."
+}

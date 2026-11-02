@@ -1,0 +1,83 @@
+﻿{
+  "runId": "20261025T094721Z-ea4f1267",
+  "generatedAtUtc": "2026-10-25T09:47:21Z",
+  "provider": "eSpeak NG 1.52.0 at /usr/bin/espeak-ng (direct WSL fallback; native Windows RESUS provider process cannot launch this Linux binary)",
+  "providerSettings": {
+    "voice": "en-gb",
+    "accent": "English (Great Britain), British English",
+    "indianEnglishVoiceAvailable": false,
+    "speedFlag": "-s",
+    "speedApproxWordsPerMinute": 145,
+    "defaultApproxWordsPerMinute": 175,
+    "tone": "CALM",
+    "pitchFlag": "-p",
+    "pitch": 50,
+    "amplitudeFlag": "-a",
+    "amplitude": 110
+  },
+  "sourceFiles": [
+    "greeting.txt",
+    "location.txt",
+    "number-and-landmark.txt"
+  ],
+  "wavFormat": {
+    "codec": "pcm_s16le",
+    "sampleRateHz": 22050,
+    "channels": 1,
+    "bitsPerSample": 16,
+    "decoding": "ffmpeg 8.0.1 decode to null passed for all three",
+    "audioPresence": "All contain nonzero samples; measured peaks and RMS are recorded per sample."
+  },
+  "telephonyConversion": {
+    "implementation": "modules/module_02_speech_processing/src/providers/audioFormat.ts decodeAudio + toMonoSlin",
+    "format": "mono signed 16-bit PCM, 8000 Hz",
+    "validation": "Passed for all three actual generated WAVs; converted sample counts and durations recorded per sample."
+  },
+  "speechRecognition": {
+    "provider": "local whisper.cpp",
+    "binary": "/home/resus/whisper.cpp/build/bin/whisper-cli",
+    "model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+    "languageArgument": "-l en",
+    "scope": "Actual local engine/model, generated prompt WAVs only; not caller or telephony integration."
+  },
+  "samples": [
+    {
+      "file": "greeting.wav",
+      "sourceText": "Hello. You are speaking with the RESUS training system. Please speak clearly after the tone.",
+      "transcript": "Hello. You are speaking with the reused training system. Please speak clearly after the tone.",
+      "transcriptionDifference": "RESUS was recognized as reused.",
+      "sizeBytes": 292488,
+      "durationSeconds": 6.631383,
+      "durationMsAt8k": 6631,
+      "framesAt22050": 146222,
+      "peak": 27608,
+      "rms": 3028.4
+    },
+    {
+      "file": "location.wav",
+      "sourceText": "Please tell me where you are. You can give me the area name, road name, or a nearby landmark.",
+      "transcript": "Please tell me where you are. You can give me the area name, road name, or a nearby landmark.",
+      "transcriptionDifference": null,
+      "sizeBytes": 300332,
+      "durationSeconds": 6.809252,
+      "durationMsAt8k": 6809,
+      "framesAt22050": 150144,
+      "peak": 28894,
+      "rms": 3200.5
+    },
+    {
+      "file": "number-and-landmark.wav",
+      "sourceText": "Please say the house number, road name, and a nearby landmark slowly and clearly.",
+      "transcript": "please save a house number, road name, and a nearby landmark slowly and clearly.",
+      "transcriptionDifference": "say was recognized as save; Whisper also omitted the word the.",
+      "sizeBytes": 265498,
+      "durationSeconds": 6.019365,
+      "durationMsAt8k": 6019,
+      "framesAt22050": 132727,
+      "peak": 29033,
+      "rms": 3311.3
+    }
+  ],
+  "humanReview": "Not performed. User listening is required; automatic transcription and metadata do not establish intelligibility.",
+  "liveTelephony": "Not tested."
+}

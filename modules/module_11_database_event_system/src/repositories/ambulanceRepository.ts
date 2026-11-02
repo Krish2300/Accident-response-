@@ -311,16 +311,45 @@ export class AmbulanceRepository {
     overrideReason?: string | null;
     consideredCandidates: number;
     decidedByUserId?: string | null;
+    offerTtlMs?: number;
   }): Promise<AmbulanceAssignment> {
     const id = createId('ASG');
+    const offeredAt = new Date();
+    const expiresAt = new Date(offeredAt.getTime() + Math.max(1, input.offerTtlMs ?? 60_000));
     const row = await guardDatabase(
-      async () =>
-        this.db.ambulanceAssignment.create({
+      async () => withTransaction(this.db, async (tx) => {
+        const existingForEmergency = await tx.ambulanceAssignment.findFirst({
+          where: { emergencyId: input.emergencyId, status: { in: ['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'] } },
+        });
+        if (existingForEmergency) {
+          throw new AppError(ErrorCode.CONFLICT, `Emergency ${input.emergencyId} already has an active ambulance assignment`, 409);
+        }
+        const previouslyReleasedForEmergency = await tx.ambulanceAssignment.findFirst({
+          where: {
+            emergencyId: input.emergencyId,
+            ambulanceId: input.ambulanceId,
+            status: { in: ['DECLINED', 'EXPIRED', 'CANCELLED'] },
+          },
+        });
+        if (previouslyReleasedForEmergency) {
+          throw new AppError(ErrorCode.CONFLICT, 'This ambulance already declined or expired for this emergency and cannot be reassigned to it.', 409);
+        }
+        const ambulance = await tx.ambulance.findUnique({ where: { id: input.ambulanceId } });
+        if (!ambulance) throw new AppError(ErrorCode.AMBULANCE_NOT_FOUND, `Ambulance '${input.ambulanceId}' was not found.`, 404);
+        if (ambulance.status !== 'AVAILABLE' && input.source !== 'MANUAL_OVERRIDE') {
+          throw new AppError(ErrorCode.AMBULANCE_NOT_AVAILABLE, `Ambulance ${input.ambulanceId} is not available`, 409);
+        }
+        const active = await tx.ambulanceAssignment.findFirst({
+          where: { ambulanceId: input.ambulanceId, status: { in: ['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'] } },
+        });
+        if (active) throw new AppError(ErrorCode.CONFLICT, `Ambulance ${input.ambulanceId} already has active assignment`, 409);
+
+        const created = await tx.ambulanceAssignment.create({
           data: {
             id,
             emergencyId: input.emergencyId,
             ambulanceId: input.ambulanceId,
-            status: 'ASSIGNED',
+            status: 'OFFERED',
             source: input.source,
             distanceKm: input.distanceKm,
             estimatedResponseTimeMin: input.estimatedResponseTimeMin,
@@ -330,14 +359,201 @@ export class AmbulanceRepository {
             overrideReason: input.overrideReason ?? null,
             consideredCandidates: input.consideredCandidates,
             decidedByUserId: input.decidedByUserId ?? null,
+            offeredAt,
+            expiresAt,
           },
-        }),
+        });
+        await tx.ambulance.update({
+          where: { id: input.ambulanceId },
+          data: { status: 'ASSIGNED', currentEmergencyId: input.emergencyId, assignedAt: new Date() },
+        });
+        await tx.emergency.update({ where: { id: input.emergencyId }, data: { assignedAmbulanceId: input.ambulanceId } });
+        const actorType = input.decidedByUserId ? 'OPERATOR' : 'MODULE';
+        await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_ASSIGNMENT_REQUESTED', {
+          emergencyId: input.emergencyId,
+          entityType: 'ambulance',
+          entityId: input.ambulanceId,
+          actorType,
+          actorId: input.decidedByUserId ?? null,
+          payload: {
+            emergencyId: input.emergencyId,
+            candidatesEvaluated: input.consideredCandidates,
+            requiredEquipment: [],
+            requiredCapabilities: [],
+          },
+        }));
+        const emergency = await tx.emergency.findUniqueOrThrow({ where: { id: input.emergencyId }, select: { isSimulation: true } });
+        await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_ASSIGNMENT_OFFERED', {
+          emergencyId: input.emergencyId,
+          entityType: 'ambulance_assignment',
+          entityId: id,
+          actorType,
+          actorId: input.decidedByUserId ?? null,
+          payload: { ambulanceId: input.ambulanceId, assignmentId: id, emergencyId: input.emergencyId, offeredAt: offeredAt.toISOString(), expiresAt: expiresAt.toISOString(), isSimulation: emergency.isSimulation },
+        }));
+        await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_ASSIGNED', {
+          emergencyId: input.emergencyId,
+          entityType: 'ambulance',
+          entityId: input.ambulanceId,
+          actorType,
+          actorId: input.decidedByUserId ?? null,
+          payload: {
+            ambulanceId: input.ambulanceId,
+            assignmentId: id,
+            emergencyId: input.emergencyId,
+            distanceKm: input.distanceKm,
+            estimatedResponseTimeMin: input.estimatedResponseTimeMin,
+            matchingFactors: input.matchingFactors,
+            score: input.score,
+            source: input.source as 'AUTOMATIC' | 'MANUAL_OVERRIDE',
+            overrideReason: input.overrideReason ?? null,
+            consideredCandidates: input.consideredCandidates,
+          },
+        }));
+        return created;
+      }),
       'Failed to persist ambulance assignment',
     );
     return mapAssignment(row as unknown as Record<string, unknown>);
   }
 
+  async activeAssignmentForDriver(driverId: string): Promise<{ assignment: AmbulanceAssignment; ambulance: Ambulance } | null> {
+    await this.expireDueOffers({ driverId });
+    return guardDatabase(async () => {
+      const row = await this.db.ambulanceAssignment.findFirst({
+        where: {
+          ambulance: { assignedDriverId: driverId },
+          status: { in: ['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: { ambulance: { include: { crew: true } } },
+      });
+      if (!row) return null;
+      return {
+        assignment: mapAssignment(row as unknown as Record<string, unknown>),
+        ambulance: mapAmbulance(row.ambulance as unknown as Record<string, unknown>, row.ambulance.crew as never[]),
+      };
+    }, 'Failed to read driver assignment');
+  }
+
+  async respondToAssignment(input: {
+    assignmentId: string;
+    driverId: string;
+    decision: 'ACCEPT' | 'DECLINE';
+    reason?: string | null;
+  }): Promise<AmbulanceAssignment> {
+    await this.expireDueOffers({ assignmentId: input.assignmentId });
+    const decidedAt = new Date();
+    let row: unknown;
+    try {
+      row = await guardDatabase(async () => withTransaction(this.db, async (tx) => {
+      const current = await tx.ambulanceAssignment.findUnique({
+        where: { id: input.assignmentId },
+        include: { ambulance: true },
+      });
+      if (!current) throw AppError.notFound('Assignment', input.assignmentId);
+      if (current.ambulance.assignedDriverId !== input.driverId) {
+        throw new AppError(ErrorCode.FORBIDDEN, 'This assignment does not belong to the authenticated driver.', 403);
+      }
+      if ((current.status === 'ACCEPTED' && input.decision === 'ACCEPT') ||
+          (current.status === 'DECLINED' && input.decision === 'DECLINE')) {
+        return current;
+      }
+      if (!['OFFERED', 'ASSIGNED'].includes(current.status) || current.ambulance.status !== 'ASSIGNED') {
+        throw new AppError(ErrorCode.CONFLICT, 'Only a pending, undispatched assignment can be accepted or declined.', 409);
+      }
+      const nextStatus = input.decision === 'ACCEPT' ? 'ACCEPTED' : 'DECLINED';
+      const changed = await tx.ambulanceAssignment.updateMany({
+        where: { id: input.assignmentId, ambulanceId: current.ambulanceId, status: current.status,
+          ...(current.status === 'OFFERED' ? { expiresAt: { gt: decidedAt } } : {}) },
+        data: { status: nextStatus, ...(input.decision === 'DECLINE' ? { releasedAt: decidedAt } : {}) },
+      });
+      if (changed.count !== 1) throw new AppError(ErrorCode.CONFLICT, 'Assignment was already answered.', 409);
+
+      if (input.decision === 'DECLINE') {
+        await tx.ambulance.update({
+          where: { id: current.ambulanceId },
+          data: { status: 'AVAILABLE', currentEmergencyId: null, availableAt: decidedAt },
+        });
+        await tx.emergency.updateMany({
+          where: { id: current.emergencyId, assignedAmbulanceId: current.ambulanceId },
+          data: { assignedAmbulanceId: null },
+        });
+      }
+
+      const event = input.decision === 'ACCEPT'
+        ? defineEvent('AMBULANCE_ASSIGNMENT_ACCEPTED', {
+            emergencyId: current.emergencyId,
+            entityType: 'ambulance_assignment',
+            entityId: current.id,
+            actorType: 'AMBULANCE',
+            actorId: input.driverId,
+            payload: { assignmentId: current.id, ambulanceId: current.ambulanceId, emergencyId: current.emergencyId, acceptedAt: decidedAt.toISOString() },
+          })
+        : defineEvent('AMBULANCE_ASSIGNMENT_DECLINED', {
+            emergencyId: current.emergencyId,
+            entityType: 'ambulance_assignment',
+            entityId: current.id,
+            actorType: 'AMBULANCE',
+            actorId: input.driverId,
+            payload: { assignmentId: current.id, ambulanceId: current.ambulanceId, emergencyId: current.emergencyId, declinedAt: decidedAt.toISOString(), reason: input.reason ?? null },
+          });
+      await this.events.recordInTransaction(tx as never, event);
+      return tx.ambulanceAssignment.findUniqueOrThrow({ where: { id: current.id } });
+      }), 'Failed to record driver assignment response');
+    } catch (error) {
+      // Covers the small interval where the offer crosses its deadline after
+      // the first expiry sweep but before the conditional acceptance update.
+      await this.expireDueOffers({ assignmentId: input.assignmentId });
+      throw error;
+    }
+    return mapAssignment(row as unknown as Record<string, unknown>);
+  }
+
+  async dispatchAssignment(input: { ambulanceId: string; emergencyId: string; dispatchedByUserId?: string | null }): Promise<void> {
+    await this.expireDueOffers({ emergencyId: input.emergencyId, ambulanceId: input.ambulanceId });
+    await guardDatabase(async () => withTransaction(this.db, async (tx) => {
+      const ambulance = await tx.ambulance.findUnique({ where: { id: input.ambulanceId } });
+      if (!ambulance) throw new AppError(ErrorCode.AMBULANCE_NOT_FOUND, `Ambulance '${input.ambulanceId}' was not found.`, 404);
+      const assignment = await tx.ambulanceAssignment.findFirst({
+        where: { ambulanceId: input.ambulanceId, emergencyId: input.emergencyId, status: { in: ['ASSIGNED', 'ACCEPTED'] } },
+      });
+      if (!assignment) {
+        const alreadyDispatched = await tx.ambulanceAssignment.findFirst({
+          where: { ambulanceId: input.ambulanceId, emergencyId: input.emergencyId, status: 'DISPATCHED' },
+        });
+        if (alreadyDispatched && ambulance.status === 'EN_ROUTE') return;
+        throw new AppError(ErrorCode.CONFLICT, 'A pending or accepted assignment is required before dispatch.', 409);
+      }
+      if (ambulance.status !== 'ASSIGNED') {
+        throw new AppError(ErrorCode.CONFLICT, 'Ambulance is not in an assigned state and cannot be dispatched.', 409);
+      }
+      const changed = await tx.ambulanceAssignment.updateMany({
+        where: { id: assignment.id, status: { in: ['ASSIGNED', 'ACCEPTED'] } },
+        data: { status: 'DISPATCHED' },
+      });
+      if (changed.count !== 1) throw new AppError(ErrorCode.CONFLICT, 'Assignment changed before dispatch.', 409);
+      await tx.ambulance.update({ where: { id: input.ambulanceId }, data: { status: 'EN_ROUTE' } });
+      await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_DISPATCHED', {
+        emergencyId: input.emergencyId,
+        entityType: 'ambulance',
+        entityId: input.ambulanceId,
+        actorType: 'OPERATOR',
+        actorId: input.dispatchedByUserId ?? null,
+        payload: { ambulanceId: input.ambulanceId, emergencyId: input.emergencyId },
+      }));
+      await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_STATUS_CHANGED', {
+        entityType: 'ambulance',
+        entityId: input.ambulanceId,
+        actorType: 'OPERATOR',
+        actorId: input.dispatchedByUserId ?? null,
+        payload: { ambulanceId: input.ambulanceId, from: ambulance.status as never, to: 'EN_ROUTE' },
+      }));
+    }), 'Failed to dispatch ambulance');
+  }
+
   async assignmentsForEmergency(emergencyId: string): Promise<AmbulanceAssignment[]> {
+    await this.expireDueOffers({ emergencyId });
     return guardDatabase(async () => {
       const rows = await this.db.ambulanceAssignment.findMany({
         where: { emergencyId },
@@ -348,20 +564,70 @@ export class AmbulanceRepository {
   }
 
   async activeAssignmentFor(ambulanceId: string): Promise<AmbulanceAssignment | null> {
+    await this.expireDueOffers({ ambulanceId });
     return guardDatabase(async () => {
       const row = await this.db.ambulanceAssignment.findFirst({
-        where: { ambulanceId, status: 'ASSIGNED' },
+        where: { ambulanceId, status: { in: ['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'] } },
         orderBy: { decidedAt: 'desc' },
       });
       return row ? mapAssignment(row as unknown as Record<string, unknown>) : null;
     }, 'Failed to read active assignment');
   }
 
+  /**
+   * Expires due offers on the next relevant repository operation. No background
+   * worker is introduced: a GET, assignment retry, or driver response performs
+   * the state transition transactionally before exposing/using the offer.
+   */
+  async expireDueOffers(filter: { assignmentId?: string; emergencyId?: string; ambulanceId?: string; driverId?: string } = {}, now = new Date()): Promise<number> {
+    const rows = await guardDatabase(() => this.db.ambulanceAssignment.findMany({
+      where: {
+        status: 'OFFERED',
+        expiresAt: { lte: now },
+        ...(filter.assignmentId ? { id: filter.assignmentId } : {}),
+        ...(filter.emergencyId ? { emergencyId: filter.emergencyId } : {}),
+        ...(filter.ambulanceId ? { ambulanceId: filter.ambulanceId } : {}),
+        ...(filter.driverId ? { ambulance: { assignedDriverId: filter.driverId } } : {}),
+      },
+      select: { id: true },
+    }), 'Failed to find expired ambulance offers');
+    let expired = 0;
+    for (const { id } of rows) {
+      const changed = await guardDatabase(() => withTransaction(this.db, async (tx) => {
+        const current = await tx.ambulanceAssignment.findUnique({ where: { id }, include: { ambulance: true, emergency: { select: { isSimulation: true } } } });
+        if (!current || current.status !== 'OFFERED' || !current.expiresAt || current.expiresAt > now) return false;
+        const update = await tx.ambulanceAssignment.updateMany({
+          where: { id, status: 'OFFERED', expiresAt: { lte: now } },
+          data: { status: 'EXPIRED', releasedAt: now },
+        });
+        if (update.count !== 1) return false;
+        await tx.ambulance.updateMany({
+          where: { id: current.ambulanceId, status: 'ASSIGNED', currentEmergencyId: current.emergencyId },
+          data: { status: 'AVAILABLE', currentEmergencyId: null, availableAt: now },
+        });
+        await tx.emergency.updateMany({
+          where: { id: current.emergencyId, assignedAmbulanceId: current.ambulanceId },
+          data: { assignedAmbulanceId: null },
+        });
+        await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_ASSIGNMENT_EXPIRED', {
+          emergencyId: current.emergencyId,
+          entityType: 'ambulance_assignment',
+          entityId: current.id,
+          actorType: 'SYSTEM',
+          payload: { assignmentId: current.id, ambulanceId: current.ambulanceId, emergencyId: current.emergencyId, expiredAt: now.toISOString(), isSimulation: current.emergency.isSimulation },
+        }));
+        return true;
+      }), 'Failed to expire ambulance offer');
+      if (changed) expired += 1;
+    }
+    return expired;
+  }
+
   async releaseAssignments(ambulanceId: string): Promise<number> {
     return guardDatabase(
       async () =>
         this.db.ambulanceAssignment.updateMany({
-          where: { ambulanceId, status: 'ASSIGNED' },
+          where: { ambulanceId, status: { in: ['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'] } },
           data: { status: 'CANCELLED', releasedAt: new Date() },
         }).then((result) => result.count),
       'Failed to release assignments',

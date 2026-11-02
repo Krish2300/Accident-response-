@@ -1,0 +1,13 @@
+{
+  "name": "@resus/module_09_corridor_coordination",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Module 9 — traffic-corridor coordination. Derives a corridor geofence from a persisted planned route, detects (simulated) road users inside it through a deterministic provider, records the corridor and its notification intents through module 11, and emits CORRIDOR_ACTIVATED / CORRIDOR_RELEASED / NOTIFICATION_SENT. Entirely simulated: no traffic-signal, road-user feed or real notification integration exists, and every corridor is stored with priorityMode SIMULATED.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
+  "owns": [
+    "src"
+  ]
+}

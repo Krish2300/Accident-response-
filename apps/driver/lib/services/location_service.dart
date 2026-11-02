@@ -32,11 +32,12 @@ class LocationUpdate {
 
 class LocationService {
   final ApiClient _api = ApiClient();
-  final Duration updateInterval = const Duration(seconds: 3);
+  final Duration updateInterval = const Duration(seconds: 10);
   Timer? _timer;
   Position? _lastPosition;
   DateTime? _lastSent;
   bool _isTracking = false;
+  bool _uploadInFlight = false;
 
   bool get isTracking => _isTracking;
   Position? get lastPosition => _lastPosition;
@@ -57,20 +58,21 @@ class LocationService {
 
   Future<Position> getCurrentLocation() async {
     return await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-      ),
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
   }
 
-void startTracking(
+  void startTracking(
     String ambulanceId,
     Function(Position) onPosition,
     Function() onUpload, {
     Function(String)? onError,
   }) {
+    if (_isTracking) return;
     _isTracking = true;
     _timer = Timer.periodic(updateInterval, (_) async {
+      if (!_isTracking || _uploadInFlight) return;
+      _uploadInFlight = true;
       try {
         final pos = await getCurrentLocation();
         _lastPosition = pos;
@@ -85,6 +87,8 @@ void startTracking(
       } catch (e) {
         // Retry on the next tick; never report a successful upload.
         onError?.call('GPS or upload failed: $e');
+      } finally {
+        _uploadInFlight = false;
       }
     });
   }

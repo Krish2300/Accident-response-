@@ -6,6 +6,7 @@ import { closedFactValues, type LLMService } from './llm/contracts.js';
 import { ProtocolLoader } from './protocol_engine/protocolLoader.js';
 import { ProtocolEngine } from './protocol_engine/engine.js';
 import { ProtocolSessionService } from './session/sessionService.js';
+import type { ProtocolTurnOrchestrator } from './session/orchestration.js';
 
 export interface Module5Deps {
   /** Implemented by Module 11. */
@@ -20,6 +21,22 @@ export interface Module5Deps {
    * deployed build cannot be silently pointed at a different model.
    */
   providers?: LLMService[];
+  /**
+   * Optional orchestration around the HTTP utterance route's decision.
+   *
+   * Implemented by the server composition root, which owns the call session
+   * and the speech service. When present, `POST /api/protocol-sessions/:id/utterance`
+   * delegates to it so the caller's words land in the call transcript and the
+   * spoken reply is synthesised — both of which Module 5 cannot do itself
+   * because it holds no persistence or speech port. When absent (unit tests,
+   * protocol-only sessions), the route calls the engine directly and nothing
+   * about the clinical decision changes.
+   *
+   * Deliberately *not* wired into `AsteriskConversationController`: the live
+   * AudioBridge path already owns its own transcript persistence and TTS, and
+   * double-wiring it would write two transcript rows and speak twice per turn.
+   */
+  turnOrchestrator?: ProtocolTurnOrchestrator;
 }
 
 /**
@@ -35,11 +52,13 @@ export class Module5 {
   readonly llm: LlmGateway;
   readonly sessions: ProtocolSessionService;
   readonly config: Module5Config;
+  readonly turnOrchestrator: ProtocolTurnOrchestrator | null;
   private readonly logger: Logger;
 
   constructor(deps: Module5Deps) {
     this.config = deps.config ?? loadModule5Config();
     this.logger = deps.logger ?? noopLogger;
+    this.turnOrchestrator = deps.turnOrchestrator ?? null;
 
     this.loader = new ProtocolLoader(this.config.protocol.directory);
     this.engine = new ProtocolEngine(

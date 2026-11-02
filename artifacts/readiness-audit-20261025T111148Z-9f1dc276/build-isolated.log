@@ -1,0 +1,14 @@
+COMMAND: local esbuild server + Vite dashboard build to new isolated output paths (npm run build not run because existing dist would be overwritten)
+START_UTC: 2026-10-25T11:20:21.7752191Z
+vite v6.4.3 building for production...
+transforming...
+✓ 52 modules transformed.
+rendering chunks...
+computing gzip size...
+../../artifacts/readiness-audit-20261025T111148Z-9f1dc276/build-web/index.html                  0.39 kB │ gzip:  0.27 kB
+../../artifacts/readiness-audit-20261025T111148Z-9f1dc276/build-web/assets/index-CqdlwuLW.js  246.10 kB │ gzip: 71.75 kB
+✓ built in 1.64s
+
+SERVER_EXIT_CODE: 0
+WEB_EXIT_CODE: 0
+END_UTC: 2026-10-25T11:20:24.8554309Z

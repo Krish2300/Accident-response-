@@ -1,4 +1,4 @@
-import { AppError, type AmbulanceLocation, type Logger, noopLogger } from '@resus/core';
+import { type AmbulanceLocation, type Logger, noopLogger } from '@resus/core';
 import type { FleetService } from '../fleetService.js';
 
 export interface TrackingServiceDeps {

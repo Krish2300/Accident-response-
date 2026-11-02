@@ -1,0 +1,15 @@
+{
+  "runId": "49381978e33047a587f90a6ac4e6c21e",
+  "scope": "Synthetic English only; no call, no production configuration changes.",
+  "generatedAtLocal": "2026-10-25",
+  "tts": {"engine":"eSpeak NG 1.52.0", "voice":"en-gb", "speedWpm":145, "pitch":50, "amplitude":110, "generation":"success"},
+  "humanIntelligibilityConfirmed": false,
+  "samples": [
+    {"path":"sample-01.wav", "phrase":"This is a synthetic audio recognition test.", "sha256":"129608f54fedefbc2feb7b5d954bbcd25f55d6d60d890503e74d20252fd03760", "wavBytes":141436, "sampleRateHz":22050, "channels":1, "bitsPerSample":16, "durationSeconds":3.2062, "rms":3450.8, "peak":30509, "valid":true, "nonSilent":true},
+    {"path":"sample-02.wav", "phrase":"A blue kite is flying above the quiet park.", "sha256":"d7eb8f85fb86909b50461910cfb010edf2effb8f004a01b3f9be63527b1f54d1", "wavBytes":139528, "sampleRateHz":22050, "channels":1, "bitsPerSample":16, "durationSeconds":3.1629, "rms":3797.14, "peak":26229, "valid":true, "nonSilent":true},
+    {"path":"sample-03.wav", "phrase":"The library opens at nine on Tuesday morning.", "sha256":"c90f2fc64ab112365776f687210c6bf06ee3f216f67098d7050b80650044ecb2", "wavBytes":146284, "sampleRateHz":22050, "channels":1, "bitsPerSample":16, "durationSeconds":3.3161, "rms":3672.89, "peak":29169, "valid":true, "nonSilent":true}
+  ],
+  "inference": {"binary":"/home/resus/whisper.cpp/build/bin/whisper-cli", "version":"1.9.5-dev", "model":"/home/resus/whisper.cpp/models/ggml-base.en.bin", "language":"en", "threads":4, "translation":false, "jsonFlag":"-ojf", "noTimestamps":true, "directPreparedInput":"same repository decodeAudio/resampleMono16/encodeWav functions as provider (mono 16 kHz S16LE WAV)", "inferenceFailures":0, "directExactMatches":1, "directNormalizedMatches":1, "providerExactMatches":1, "providerNormalizedMatches":1, "outputsExactEqual":3, "outputsNormalizedEqual":3, "confidenceValuesEqual":3, "transcriptTextRetained":false},
+  "acceptanceGateSatisfied": false,
+  "gateReason": "This three-phrase exploratory control is not the fixed seven-phrase gate; only 1/3 normalized matches, and human intelligibility is unverified."
+}

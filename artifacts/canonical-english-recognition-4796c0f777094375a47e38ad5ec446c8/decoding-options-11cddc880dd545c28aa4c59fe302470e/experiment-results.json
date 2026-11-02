@@ -1,0 +1,518 @@
+{
+  "experiment": "Offline whisper.cpp decoding-options comparison",
+  "createdUtc": "2026-10-25T11:00:04.854Z",
+  "sourceExperiment": "4796c0f777094375a47e38ad5ec446c8",
+  "runtime": "/home/resus/whisper.cpp/build/bin/whisper-cli",
+  "model": "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+  "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+  "preprocessing": "Same repository decodeAudio/resampleMono16/encodeWav helpers used by WhisperSpeechProvider; mono 16-bit WAV 16 kHz.",
+  "normalization": "NFKC, lowercase, Unicode punctuation/symbols replaced by spaces, whitespace collapsed, trim; exact comparison trims outer whitespace only.",
+  "configurations": [
+    {
+      "name": "default-beam5",
+      "settings": "CLI defaults: -bs 5 beam search, -bo 5, -t 4, -l en, -ojf, -nt"
+    },
+    {
+      "name": "greedy-bestof1",
+      "settings": "-bs 1 -bo 1, otherwise same -t 4, -l en, -ojf, -nt"
+    }
+  ],
+  "samples": [
+    {
+      "number": 1,
+      "source": "sample-01.wav",
+      "expected": "Hello, can you hear me?",
+      "sourceSha256": "c494362f94715688c6f8eb29178c1cd9a1bd40c4992735cf184f516577e631f7",
+      "preparedFile": "sample-01-16k.wav",
+      "preparedSha256": "b1e52f2fa25f3c379ab2f42edbe0f84c4ebee6802962e23363025c576fe6d562",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 2.086375,
+      "results": {
+        "default-beam5": {
+          "transcript": "Hello, can you hear me?",
+          "exact": true,
+          "normalized": true,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-01-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-01-16k.wav' (33382 samples, 2.1 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-01.json'\n\nwhisper_print_timings:     load time =   487.04 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =    10.23 ms\nwhisper_print_timings:   sample time =    27.24 ms /    39 runs (     0.70 ms per run)\nwhisper_print_timings:   encode time =  1185.85 ms /     1 runs (  1185.85 ms per run)\nwhisper_print_timings:   decode time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:   batchd time =   134.09 ms /    36 runs (     3.72 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  2026.01 ms\n",
+            "stdout": "\n Hello, can you hear me?",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-01-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-01"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "Hello, can you hear me?",
+          "exact": true,
+          "normalized": true,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-01-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-01-16k.wav' (33382 samples, 2.1 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-01.json'\n\nwhisper_print_timings:     load time =   163.30 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     8.84 ms\nwhisper_print_timings:   sample time =     6.02 ms /     1 runs (     6.02 ms per run)\nwhisper_print_timings:   encode time =  1161.54 ms /     1 runs (  1161.54 ms per run)\nwhisper_print_timings:   decode time =    50.06 ms /     7 runs (     7.15 ms per run)\nwhisper_print_timings:   batchd time =    11.56 ms /     2 runs (     5.78 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1472.55 ms\n",
+            "stdout": "\n Hello, can you hear me?",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-01-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-01",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "number": 2,
+      "source": "sample-02.wav",
+      "expected": "I need help, please.",
+      "sourceSha256": "ac3d5bc5b5529d7f18f38ced86b1c6d5f3ef1a2f7480c94a5a6a1499290a52ed",
+      "preparedFile": "sample-02-16k.wav",
+      "preparedSha256": "e8165e48cd52638bc03792d133e7fbe19decd9e4e56c47b1e7440a7a7bf2e5ea",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 2.082,
+      "results": {
+        "default-beam5": {
+          "transcript": "I need help, please.",
+          "exact": true,
+          "normalized": true,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-02-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-02-16k.wav' (33312 samples, 2.1 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-02.json'\n\nwhisper_print_timings:     load time =   158.32 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     9.38 ms\nwhisper_print_timings:   sample time =    26.39 ms /    32 runs (     0.82 ms per run)\nwhisper_print_timings:   encode time =  1213.72 ms /     1 runs (  1213.72 ms per run)\nwhisper_print_timings:   decode time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:   batchd time =   120.43 ms /    29 runs (     4.15 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1669.91 ms\n",
+            "stdout": "\n I need help, please.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-02-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-02"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "I need help, please.",
+          "exact": true,
+          "normalized": true,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-02-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-02-16k.wav' (33312 samples, 2.1 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-02.json'\n\nwhisper_print_timings:     load time =   238.70 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     8.66 ms\nwhisper_print_timings:   sample time =     5.88 ms /     1 runs (     5.88 ms per run)\nwhisper_print_timings:   encode time =  1185.40 ms /     1 runs (  1185.40 ms per run)\nwhisper_print_timings:   decode time =    44.81 ms /     6 runs (     7.47 ms per run)\nwhisper_print_timings:   batchd time =    11.48 ms /     2 runs (     5.74 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1599.03 ms\n",
+            "stdout": "\n I need help, please.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-02-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-02",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "number": 3,
+      "source": "sample-03.wav",
+      "expected": "I am calling from the main road.",
+      "sourceSha256": "ae85ddf8d894601b3ab858ebaa94c5ae49d83aecb2c771409022ff2bf83de75d",
+      "preparedFile": "sample-03-16k.wav",
+      "preparedSha256": "7988e6c36951a6501e7c8e33061b8f3c30209bc161ac5ab0b202487063b3c30b",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 2.237625,
+      "results": {
+        "default-beam5": {
+          "transcript": "I am calling from her main road.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-03-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-03-16k.wav' (35802 samples, 2.2 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-03.json'\n\nwhisper_print_timings:     load time =   161.98 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     7.56 ms\nwhisper_print_timings:   sample time =    32.01 ms /    44 runs (     0.73 ms per run)\nwhisper_print_timings:   encode time =  1182.55 ms /     1 runs (  1182.55 ms per run)\nwhisper_print_timings:   decode time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:   batchd time =   139.05 ms /    41 runs (     3.39 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1668.88 ms\n",
+            "stdout": "\n I am calling from her main road.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-03-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-03"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "I am calling from her main road.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-03-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-03-16k.wav' (35802 samples, 2.2 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-03.json'\n\nwhisper_print_timings:     load time =   152.40 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     7.86 ms\nwhisper_print_timings:   sample time =     7.33 ms /     1 runs (     7.33 ms per run)\nwhisper_print_timings:   encode time =  1193.84 ms /     1 runs (  1193.84 ms per run)\nwhisper_print_timings:   decode time =    57.19 ms /     8 runs (     7.15 ms per run)\nwhisper_print_timings:   batchd time =     9.96 ms /     2 runs (     4.98 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1501.52 ms\n",
+            "stdout": "\n I am calling from her main road.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-03-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-03",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "number": 4,
+      "source": "sample-04.wav",
+      "expected": "The nearest landmark is the bus station.",
+      "sourceSha256": "97cec591fdf6554ffbbb94bf39c5f96504f2adf241ec794523e100e62922e0a5",
+      "preparedFile": "sample-04-16k.wav",
+      "preparedSha256": "bc3db28fdf1ad9e7970ed375c4450c980c6715cdda3e2370f678aa2b068f6cf8",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 2.837125,
+      "results": {
+        "default-beam5": {
+          "transcript": "The nearest landmark is the Mustation.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-04-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-04-16k.wav' (45394 samples, 2.8 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-04.json'\n\nwhisper_print_timings:     load time =   163.19 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     9.15 ms\nwhisper_print_timings:   sample time =    33.73 ms /    45 runs (     0.75 ms per run)\nwhisper_print_timings:   encode time =  1200.68 ms /     1 runs (  1200.68 ms per run)\nwhisper_print_timings:   decode time =     7.11 ms /     1 runs (     7.11 ms per run)\nwhisper_print_timings:   batchd time =   141.33 ms /    41 runs (     3.45 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1695.05 ms\n",
+            "stdout": "\n The nearest landmark is the Mustation.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-04-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-04"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "The nearest landmark is the Mustation.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-04-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-04-16k.wav' (45394 samples, 2.8 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-04.json'\n\nwhisper_print_timings:     load time =   160.49 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     9.61 ms\nwhisper_print_timings:   sample time =     8.24 ms /     1 runs (     8.24 ms per run)\nwhisper_print_timings:   encode time =  1200.25 ms /     1 runs (  1200.25 ms per run)\nwhisper_print_timings:   decode time =    59.92 ms /     8 runs (     7.49 ms per run)\nwhisper_print_timings:   batchd time =    12.24 ms /     2 runs (     6.12 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1529.91 ms\n",
+            "stdout": "\n The nearest landmark is the Mustation.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-04-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-04",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "number": 5,
+      "source": "sample-05.wav",
+      "expected": "The house number is twenty-four.",
+      "sourceSha256": "89243f180e5dd880668349cc90f53b64eeb61bf26b8c8636c2c084988c2c3dda",
+      "preparedFile": "sample-05-16k.wav",
+      "preparedSha256": "a0d0a847de67929ac6ff5ef8c1eab0396ab36f2a72c44aa7cb1eac9f78915854",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 2.383625,
+      "results": {
+        "default-beam5": {
+          "transcript": "The house number is 24.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-05-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-05-16k.wav' (38138 samples, 2.4 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-05.json'\n\nwhisper_print_timings:     load time =   155.80 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =    22.33 ms\nwhisper_print_timings:   sample time =    23.20 ms /    33 runs (     0.70 ms per run)\nwhisper_print_timings:   encode time =  1221.32 ms /     1 runs (  1221.32 ms per run)\nwhisper_print_timings:   decode time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:   batchd time =   106.80 ms /    30 runs (     3.56 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1675.21 ms\n",
+            "stdout": "\n The house number is 24.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-05-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-05"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "The house number is 24.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-05-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-05-16k.wav' (38138 samples, 2.4 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-05.json'\n\nwhisper_print_timings:     load time =   169.07 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     8.11 ms\nwhisper_print_timings:   sample time =     7.48 ms /     1 runs (     7.48 ms per run)\nwhisper_print_timings:   encode time =  1202.43 ms /     1 runs (  1202.43 ms per run)\nwhisper_print_timings:   decode time =    46.35 ms /     6 runs (     7.72 ms per run)\nwhisper_print_timings:   batchd time =    12.18 ms /     2 runs (     6.09 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1520.59 ms\n",
+            "stdout": "\n The house number is 24.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-05-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-05",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "number": 6,
+      "source": "sample-06.wav",
+      "expected": "Please send the information to the operator.",
+      "sourceSha256": "b0249ae01950e7c16752c6369248ce2174b430c03fed0af83a2c1ce265f59100",
+      "preparedFile": "sample-06-16k.wav",
+      "preparedSha256": "e7354624aeb5217e8107989c8c83ec67a5cc6b54d92ca710868bb904212843c9",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 3.0810625,
+      "results": {
+        "default-beam5": {
+          "transcript": "Please send the information to the operator.",
+          "exact": true,
+          "normalized": true,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-06-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-06-16k.wav' (49297 samples, 3.1 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-06.json'\n\nwhisper_print_timings:     load time =   169.59 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     9.62 ms\nwhisper_print_timings:   sample time =    31.82 ms /    44 runs (     0.72 ms per run)\nwhisper_print_timings:   encode time =  1229.91 ms /     1 runs (  1229.91 ms per run)\nwhisper_print_timings:   decode time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:   batchd time =   155.98 ms /    41 runs (     3.80 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1730.57 ms\n",
+            "stdout": "\n Please send the information to the operator.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-06-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-06"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "Please send the information to the operator.",
+          "exact": true,
+          "normalized": true,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-06-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-06-16k.wav' (49297 samples, 3.1 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-06.json'\n\nwhisper_print_timings:     load time =   165.00 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =    10.02 ms\nwhisper_print_timings:   sample time =     7.43 ms /     1 runs (     7.43 ms per run)\nwhisper_print_timings:   encode time =  1214.06 ms /     1 runs (  1214.06 ms per run)\nwhisper_print_timings:   decode time =    61.62 ms /     8 runs (     7.70 ms per run)\nwhisper_print_timings:   batchd time =    10.13 ms /     2 runs (     5.07 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1547.11 ms\n",
+            "stdout": "\n Please send the information to the operator.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-06-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-06",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "number": 7,
+      "source": "sample-07.wav",
+      "expected": "I will stay here and answer your questions.",
+      "sourceSha256": "604337645ae9c5aa6d2252d99459c32637d3fc52c2198e5d9653c3d25b757600",
+      "preparedFile": "sample-07-16k.wav",
+      "preparedSha256": "5641325b1583fdea4fd61f0234b98ebde39ebc3b71aaa3f35cd7ef5f7aa03c3c",
+      "preparedSampleRateHz": 16000,
+      "preparedChannels": 1,
+      "durationSeconds": 3.127,
+      "results": {
+        "default-beam5": {
+          "transcript": "I will stay here and answer your question.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-07-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-07-16k.wav' (50032 samples, 3.1 sec), 4 threads, 1 processors, 5 beams + best of 5, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-07.json'\n\nwhisper_print_timings:     load time =   151.83 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =     8.32 ms\nwhisper_print_timings:   sample time =    32.42 ms /    49 runs (     0.66 ms per run)\nwhisper_print_timings:   encode time =  1246.02 ms /     1 runs (  1246.02 ms per run)\nwhisper_print_timings:   decode time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:   batchd time =   161.45 ms /    46 runs (     3.51 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1725.29 ms\n",
+            "stdout": "\n I will stay here and answer your question.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-07-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/default-beam5-sample-07"
+            ]
+          }
+        },
+        "greedy-bestof1": {
+          "transcript": "I will stay here and answer your question.",
+          "exact": false,
+          "normalized": false,
+          "technicalError": null,
+          "process": {
+            "status": 0,
+            "signal": null,
+            "stderr": "whisper_init_from_file_with_params_no_state: loading model from '/home/resus/whisper.cpp/models/ggml-base.en.bin'\nwhisper_init_with_params_no_state: use gpu    = 1\nwhisper_init_with_params_no_state: flash attn = 1\nwhisper_init_with_params_no_state: gpu_device = 0\nwhisper_init_with_params_no_state: dtw        = 0\nwhisper_init_with_params_no_state: devices    = 1\nwhisper_init_with_params_no_state: backends   = 1\nwhisper_model_load: loading model\nwhisper_model_load: n_vocab       = 51864\nwhisper_model_load: n_audio_ctx   = 1500\nwhisper_model_load: n_audio_state = 512\nwhisper_model_load: n_audio_head  = 8\nwhisper_model_load: n_audio_layer = 6\nwhisper_model_load: n_text_ctx    = 448\nwhisper_model_load: n_text_state  = 512\nwhisper_model_load: n_text_head   = 8\nwhisper_model_load: n_text_layer  = 6\nwhisper_model_load: n_mels        = 80\nwhisper_model_load: ftype         = 1\nwhisper_model_load: qntvr         = 0\nwhisper_model_load: type          = 2 (base)\nwhisper_model_load: adding 1607 extra tokens\nwhisper_model_load: n_langs       = 99\nwhisper_model_load:          CPU total size =   147.37 MB\nwhisper_model_load: model size    =  147.37 MB\nwhisper_backend_init_gpu: device 0: CPU (type: 0)\nwhisper_backend_init_gpu: no GPU found\nwhisper_init_state: kv self size  =    6.29 MB\nwhisper_init_state: kv cross size =   18.87 MB\nwhisper_init_state: kv pad  size  =    3.15 MB\nwhisper_init_state: compute buffer (conv)   =   16.28 MB\nwhisper_init_state: compute buffer (encode) =   23.09 MB\nwhisper_init_state: compute buffer (cross)  =    4.66 MB\nwhisper_init_state: compute buffer (decode) =   96.37 MB\nread_audio_data: reading audio data from '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-07-16k.wav' ...\nread_audio_data: trying to decode with miniaudio\n\nsystem_info: n_threads = 4 / 16 | WHISPER : VITISAI = 0 | COREML = 0 | OPENVINO = 0 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | OPENMP = 1 | REPACK = 1 | \n\nmain: processing '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-07-16k.wav' (50032 samples, 3.1 sec), 4 threads, 1 processors, 1 beams + best of 1, lang = en, task = transcribe, timestamps = 0 ...\n\noutput_json: saving output to '/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-07.json'\n\nwhisper_print_timings:     load time =   169.62 ms\nwhisper_print_timings:     fallbacks =   0 p /   0 h\nwhisper_print_timings:      mel time =    11.09 ms\nwhisper_print_timings:   sample time =     8.62 ms /     1 runs (     8.62 ms per run)\nwhisper_print_timings:   encode time =  1194.94 ms /     1 runs (  1194.94 ms per run)\nwhisper_print_timings:   decode time =    70.57 ms /     9 runs (     7.84 ms per run)\nwhisper_print_timings:   batchd time =    11.87 ms /     2 runs (     5.94 ms per run)\nwhisper_print_timings:   prompt time =     0.00 ms /     1 runs (     0.00 ms per run)\nwhisper_print_timings:    total time =  1558.65 ms\n",
+            "stdout": "\n I will stay here and answer your question.",
+            "args": [
+              "-m",
+              "/home/resus/whisper.cpp/models/ggml-base.en.bin",
+              "-f",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/sample-07-16k.wav",
+              "-t",
+              "4",
+              "-l",
+              "en",
+              "-ojf",
+              "-nt",
+              "-of",
+              "/mnt/f/minor/artifacts/canonical-english-recognition-4796c0f777094375a47e38ad5ec446c8/decoding-options-11cddc880dd545c28aa4c59fe302470e/greedy-bestof1-sample-07",
+              "-bs",
+              "1",
+              "-bo",
+              "1"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "default-beam5": {
+      "exact": 3,
+      "normalized": 3,
+      "failures": 0
+    },
+    "greedy-bestof1": {
+      "exact": 3,
+      "normalized": 3,
+      "failures": 0
+    }
+  },
+  "interpretation": "Diagnostic only; no production setting change."
+}
