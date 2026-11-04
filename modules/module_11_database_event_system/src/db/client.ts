@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaClient, Prisma } from '@prisma/client';
 import type { Database } from '@resus/core';
 import { AppError, ErrorCode, createConsoleLogger } from '@resus/core';
@@ -48,9 +49,55 @@ export async function withTransaction<T>(
   fn: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
   try {
-    return await runScoped(() => db.$transaction(fn, { timeout: 15000, maxWait: 5000 }));
+    return await serialiseForSqlite(() => runScoped(() => db.$transaction(fn, { timeout: 15000, maxWait: 5000 })));
   } catch (error) {
     throw mapDatabaseError(error, 'Transaction failed');
+  }
+}
+
+/**
+ * SQLite has a single writer. Two interactive transactions that both read and
+ * then write deadlock on the lock upgrade, and SQLite resolves that by failing
+ * one immediately (surfacing as "Transaction failed" / socket timeout). That
+ * happens as soon as several modules react to the same committed event at once
+ * (Modules 6, 7, 8, 9 and 10 all do). Transactions are therefore queued
+ * in-process when the datasource is SQLite. PostgreSQL is unaffected.
+ *
+ * Re-entrant: a transaction started from inside another one's async context
+ * runs immediately instead of waiting for itself.
+ */
+const sqliteLock = { tail: Promise.resolve() as Promise<unknown> };
+const insideLock = new AsyncLocalStorage<true>();
+
+function usesSqlite(): boolean {
+  const url = process.env.DATABASE_URL ?? 'file:';
+  return url.startsWith('file:') || url.startsWith('sqlite:');
+}
+
+async function serialiseForSqlite<T>(work: () => Promise<T>): Promise<T> {
+  if (!usesSqlite() || insideLock.getStore()) return work();
+  const previous = sqliteLock.tail;
+  let release!: () => void;
+  sqliteLock.tail = new Promise<void>((resolve) => { release = resolve; });
+  try {
+    await previous.catch(() => undefined);
+    return await insideLock.run(true, work);
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Switches a SQLite database to write-ahead logging, so readers never wait for
+ * the writer. Persistent in the database file; a no-op on other providers.
+ */
+export async function prepareSqlite(db: PrismaClient): Promise<void> {
+  if (!usesSqlite()) return;
+  try {
+    await db.$queryRawUnsafe('PRAGMA journal_mode=WAL;');
+    await db.$queryRawUnsafe('PRAGMA busy_timeout=10000;');
+  } catch (error) {
+    logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'could not enable SQLite WAL mode');
   }
 }
 

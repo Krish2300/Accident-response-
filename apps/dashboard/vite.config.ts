@@ -28,6 +28,8 @@ export default defineConfig({
     fs: { allow: [workspaceRoot] },
     proxy: {
       '/api': proxyTarget,
+      // Browser caller phone (Web Call, served by the Fastify server).
+      '/call': proxyTarget,
       '/ws': { target: proxyTarget.replace(/^http/, 'ws'), ws: true },
     },
   },

@@ -9,7 +9,7 @@ import {
   isValidCoordinate,
   noopLogger,
 } from '@resus/core';
-import type { AssignmentService } from '../assignment/assignmentService.js';
+import { requiredEquipmentFor, type AssignmentService } from '../assignment/assignmentService.js';
 import type { FleetService } from '../fleetService.js';
 import type { Module6Config } from '../config.js';
 
@@ -227,6 +227,7 @@ export class AutoDispatchService {
         emergencyId,
         latitude: emergency.latitude,
         longitude: emergency.longitude,
+        requiredEquipment: requiredEquipmentFor(emergency.incidentType),
       });
       return {
         emergencyId,

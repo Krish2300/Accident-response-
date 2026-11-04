@@ -11,8 +11,8 @@ import {
   type RouteDefinition,
   type RoutingProvider,
 } from '@resus/core';
-import { createModule11, getPrismaClient } from '@resus/data';
-import { Module1 } from '@resus/call';
+import { createModule11, getPrismaClient, prepareSqlite } from '@resus/data';
+import { CallService, Module1 } from '@resus/call';
 import { Module2 } from '@resus/speech';
 import { Module5, type LLMService } from '@resus/protocols';
 import { Module6 } from '@resus/fleet';
@@ -42,6 +42,10 @@ import {
   EmergencyClassificationService,
   createNlpClassifyRoutes,
 } from './nlp/classifyRoutes.js';
+import { AutonomousOrchestrator, loadAutonomousConfig } from './orchestrator/autonomousOrchestrator.js';
+import { WebCallService } from './webcall/webCallService.js';
+import { BrowserTelephonyProvider } from './webcall/browserTelephony.js';
+import { registerWebCallRoutes } from './webcall/routes.js';
 
 /**
  * The server composition root.
@@ -64,6 +68,10 @@ export interface BuiltServer {
   module12: Module12;
   realtime: RealtimeHub;
   logger: Logger;
+  /** Module 10 autonomous orchestrator (inert unless MODULE10_AUTONOMOUS_ENABLED=true). */
+  orchestrator: AutonomousOrchestrator;
+  /** Browser call channel (`/call`), the no-PBX equivalent of the Asterisk leg. */
+  webCalls: WebCallService;
   /**
    * Non-null only when `TRANSPORT_PROVIDER=asterisk`.
    *
@@ -126,8 +134,10 @@ export async function buildServer(
 
   // Module 11 owns persistence and the event bus; it is created first because
   // everything else depends on its ports.
+  const database = dependencies.db ?? getPrismaClient();
+  await prepareSqlite(database);
   const module11 = createModule11({
-    db: dependencies.db ?? getPrismaClient(),
+    db: database,
     nodeEnv: config.nodeEnv,
     logger,
     realtime,
@@ -293,6 +303,64 @@ export async function buildServer(
     enabled: config.nlp.enabled,
   });
 
+  // Browser calls get their own Module 1 call service on a WEBRTC transport so
+  // they never dial out through the PBX, whatever TRANSPORT_PROVIDER is.
+  const webCallTransport = new CallService({
+    config: module1.config,
+    telephony: new BrowserTelephonyProvider(),
+    emergencies: module11.emergencies,
+    calls: module11.calls,
+    events: module11.eventPublisher,
+    logger,
+  });
+
+  // Module 10 autonomous decision engine. It only calls the module services
+  // above and writes the same events a human action would, as MODULE_10.
+  const orchestrator: AutonomousOrchestrator = new AutonomousOrchestrator({
+    bus: module11.bus,
+    emergencies: module11.emergencies,
+    ambulances: module11.ambulances,
+    routes: module11.routes,
+    events: module11.eventPublisher,
+    fleet: module6.fleet,
+    assignment: module6.assignment,
+    hospitals: module7.selection,
+    routing: module8.optimization,
+    calls: {
+      // Hang up on the transport that actually carries the call.
+      closeForEmergency: (emergencyId: string, reason: string): Promise<unknown> =>
+        (webCalls.owns(emergencyId) ? webCallTransport : module1.calls).closeForEmergency(emergencyId, reason),
+    },
+    llm: module5.llm,
+    module3: {
+      enabled: config.nlp.enabled,
+      classify: (emergencyId, body) => classification.classify(emergencyId, body),
+    },
+    config: loadAutonomousConfig(),
+    logger,
+  });
+  orchestrator.start();
+
+  const webCalls: WebCallService = new WebCallService({
+    calls: webCallTransport,
+    transcripts: module11.calls,
+    sessions: module5.sessions,
+    emergencies: module11.emergencies,
+    ambulances: module11.ambulances,
+    hospitals: module11.hospitals,
+    routes: module11.routes,
+    orchestrator,
+    recognition: module2.recognitionProvider,
+    synthesis: module2.synthesisProvider,
+    minConfidence: module2.config.speech.minConfidence,
+    captureCallerLocation: async (emergencyId, locationText) => { await callerLocationResolution.capture(emergencyId, locationText); },
+    defaultLocation: {
+      latitude: Number(process.env.WEBCALL_DEFAULT_LAT ?? process.env.MAP_DEFAULT_LAT ?? 12.9716),
+      longitude: Number(process.env.WEBCALL_DEFAULT_LNG ?? process.env.MAP_DEFAULT_LNG ?? 77.5946),
+    },
+    logger,
+  });
+
   await fastify.register(jwt, { secret: config.jwtSecret });
   const auth = new AuthService(
     module11.users,
@@ -306,6 +374,7 @@ export async function buildServer(
   );
 
   registerAuthRoutes(fastify, auth);
+  registerWebCallRoutes(fastify, webCalls);
 
   // Collect routes from every implemented module into one table.
   const table = new RouteTable();
@@ -394,7 +463,7 @@ export async function buildServer(
   // Telephony is started last: it opens a manager connection and a media port,
   // so it must not be left half-open if anything above this line fails. When the
   // provider is `asterisk` and the PBX cannot be reached, this throws and the
-  // process does not boot â€” a silent server that accepts no calls is worse than
+  // process does not boot - a silent server that accepts no calls is worse than
   // a visible startup failure.
   const asterisk = await startAsteriskRuntime({
     module1,
@@ -439,6 +508,7 @@ export async function buildServer(
   const shutdown = async (): Promise<void> => {
     logger.info('shutting down');
     await offerExpiryWatch.stop();
+    await orchestrator.dispose();
     module7.dispose();
     module8.dispose();
     module9.dispose();
@@ -449,5 +519,5 @@ export async function buildServer(
     await module11.dispose();
   };
 
-  return { fastify, module11, module1, module2, module5, module6, module7, module8, module9, module12, realtime, logger, asterisk, shutdown };
+  return { fastify, module11, module1, module2, module5, module6, module7, module8, module9, module12, realtime, logger, orchestrator, webCalls, asterisk, shutdown };
 }

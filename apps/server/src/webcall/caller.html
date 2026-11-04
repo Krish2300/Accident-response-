@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RESUS Emergency Call</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --red:#ef4444; --green:#22c55e; --blue:#3b82f6; --amber:#f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; }
+  header h1 { font-size:18px; margin:0; }
+  header small { color:var(--muted); }
+  main { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap:16px; padding:16px; max-width:1200px; margin:0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border-radius:12px; padding:16px; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  button { border:0; border-radius:999px; padding:12px 20px; font-size:15px; font-weight:600; cursor:pointer; color:white; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .call { background:var(--green); } .hang { background:var(--red); } .talk { background:var(--blue); }
+  select, input[type=text] { background:#0b1220; color:var(--text); border:1px solid #334155; border-radius:8px; padding:10px; font-size:14px; }
+  #log { height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px; }
+  .msg { padding:10px 12px; border-radius:10px; max-width:88%; line-height:1.4; white-space:pre-wrap; }
+  .SYSTEM { background:#0b3b2e; align-self:flex-start; } .CALLER { background:#1d3a6b; align-self:flex-end; }
+  .NOTE { background:transparent; color:var(--muted); font-size:12px; align-self:center; }
+  form { display:flex; gap:8px; margin-top:12px; } form input { flex:1; }
+  #state { display:inline-block; padding:4px 10px; border-radius:999px; background:#334155; font-size:12px; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:12px; }
+  .kv { background:#0b1220; border-radius:8px; padding:8px 10px; } .kv b { display:block; font-size:11px; color:var(--muted); font-weight:500; }
+  #map { height:330px; border-radius:10px; background:#0b1220; }
+  .pulse { animation: pulse 1.2s infinite; } @keyframes pulse { 50% { opacity:.55; } }
+  .warn { color:var(--amber); font-size:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🚑 RESUS Emergency Line</h1><small>Browser call: Module 1 (Web Call) → 2 → 3 → 4/5 → 6–12</small></div>
+  <span id="state">idle</span>
+</header>
+<main>
+  <section class="card">
+    <div class="controls">
+      <button id="callBtn" class="call">📞 Call</button>
+      <button id="talkBtn" class="talk" disabled>🎙️ Speak</button>
+      <button id="hangBtn" class="hang" disabled>Hang up</button>
+      <select id="lang" title="Recognition language">
+        <option value="en-IN">English (India)</option>
+        <option value="en-US">English (US)</option>
+        <option value="ml-IN">Malayalam</option>
+      </select>
+      <select id="sttMode" title="Speech recognition engine">
+        <option value="browser">Browser speech recognition</option>
+        <option value="server">Server Whisper (push to talk)</option>
+        <option value="text">Typing only</option>
+      </select>
+      <label title="Automatically listen after each reply"><input type="checkbox" id="auto" checked> hands-free</label>
+    </div>
+    <div id="log"></div>
+    <form id="typeForm"><input id="typed" type="text" placeholder="Or type what the caller says…" autocomplete="off" disabled><button class="talk" id="sendBtn" disabled>Send</button></form>
+    <div class="warn" id="warn"></div>
+  </section>
+  <section class="card">
+    <div class="grid">
+      <div class="kv"><b>Emergency</b><span id="sEmergency">—</span></div>
+      <div class="kv"><b>Status</b><span id="sStage">—</span></div>
+      <div class="kv"><b>Classified as</b><span id="sType">—</span></div>
+      <div class="kv"><b>Ambulance</b><span id="sAmb">—</span></div>
+      <div class="kv"><b>Hospital</b><span id="sHosp">—</span></div>
+      <div class="kv"><b>ETA</b><span id="sEta">—</span></div>
+    </div>
+    <div id="map"></div>
+  </section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const log = $('log');
+  let call = null; let listening = false; let speaking = false; let pollTimer = null; let recognition = null;
+  let map = null, layers = {};
+
+  function setState(text) { $('state').textContent = text; }
+  function add(kind, text) {
+    const div = document.createElement('div'); div.className = 'msg ' + kind; div.textContent = text;
+    log.appendChild(div); log.scrollTop = log.scrollHeight;
+  }
+  function warn(text) { $('warn').textContent = text || ''; }
+
+  async function api(path, options = {}) {
+    const headers = Object.assign({}, options.headers || {});
+    if (call) headers['x-call-token'] = call.token;
+    if (options.json !== undefined) { headers['content-type'] = 'application/json'; options.body = JSON.stringify(options.json); }
+    const res = await fetch(path, { method: options.method || 'GET', headers, body: options.body });
+    if (res.status === 204) return null;
+    const type = res.headers.get('content-type') || '';
+    if (!res.ok) { const err = type.includes('json') ? await res.json() : { error: { message: await res.text() } }; throw new Error(err.error?.message || res.statusText); }
+    return type.includes('json') ? res.json() : res.blob();
+  }
+
+  // ---------- speech out (server eSpeak if configured, else browser voice) ----------
+  async function speak(text) {
+    speaking = true; setState('speaking');
+    try {
+      const blob = await api(`/api/webcall/${call.callId}/tts`, { method: 'POST', json: { text } }).catch(() => null);
+      if (blob instanceof Blob) {
+        await new Promise((resolve) => { const audio = new Audio(URL.createObjectURL(blob)); audio.onended = resolve; audio.onerror = resolve; audio.play().catch(resolve); });
+      } else if ('speechSynthesis' in window) {
+        await new Promise((resolve) => {
+          const u = new SpeechSynthesisUtterance(text); u.lang = $('lang').value.startsWith('ml') ? 'ml-IN' : 'en-IN'; u.rate = 0.95;
+          u.onend = resolve; u.onerror = resolve; speechSynthesis.cancel(); speechSynthesis.speak(u);
+          setTimeout(resolve, Math.max(4000, text.length * 90));
+        });
+      }
+    } finally { speaking = false; setState(call ? 'connected' : 'idle'); }
+  }
+
+  // ---------- speech in ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function listenBrowser() {
+    if (!SR) { warn('This browser has no speech recognition. Use Chrome or Edge, pick "Server Whisper", or type.'); return; }
+    if (listening || speaking || !call) return;
+    recognition = new SR(); recognition.lang = $('lang').value; recognition.interimResults = true; recognition.continuous = false;
+    let finalText = '';
+    recognition.onresult = (e) => { for (const r of e.results) if (r.isFinal) finalText += r[0].transcript; setState('hearing: ' + (e.results[e.results.length - 1][0].transcript || '').slice(0, 40)); };
+    recognition.onerror = (e) => { if (e.error !== 'no-speech' && e.error !== 'aborted') warn('Speech recognition: ' + e.error); };
+    recognition.onend = () => { listening = false; $('talkBtn').classList.remove('pulse'); setState('connected'); if (finalText.trim()) send(finalText.trim()); else if ($('auto').checked && call && !speaking) setTimeout(listenBrowser, 300); };
+    listening = true; $('talkBtn').classList.add('pulse'); setState('listening…'); recognition.start();
+  }
+
+  // Push-to-talk recorder producing 16 kHz mono WAV for the server's Whisper.
+  let rec = null;
+  async function startRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = ctx.createMediaStreamSource(stream);
+    const node = ctx.createScriptProcessor(4096, 1, 1); const chunks = [];
+    node.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    source.connect(node); node.connect(ctx.destination);
+    rec = { stream, ctx, node, chunks }; listening = true; $('talkBtn').classList.add('pulse'); setState('recording… click again to send');
+  }
+  async function stopRecording() {
+    const { stream, ctx, node, chunks } = rec; rec = null; listening = false; $('talkBtn').classList.remove('pulse');
+    node.disconnect(); stream.getTracks().forEach((t) => t.stop()); const rate = ctx.sampleRate; await ctx.close();
+    const total = chunks.reduce((n, c) => n + c.length, 0); const pcm = new Float32Array(total); let o = 0; for (const c of chunks) { pcm.set(c, o); o += c.length; }
+    const ratio = rate / 16000; const out = new Int16Array(Math.floor(pcm.length / ratio));
+    for (let i = 0; i < out.length; i++) { const s = Math.max(-1, Math.min(1, pcm[Math.floor(i * ratio)])); out[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
+    const buf = new ArrayBuffer(44 + out.length * 2); const v = new DataView(buf);
+    const w = (p, s) => { for (let i = 0; i < s.length; i++) v.setUint8(p + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + out.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, out.length * 2, true);
+    new Int16Array(buf, 44).set(out);
+    setState('recognising…');
+    try {
+      const turn = await api(`/api/webcall/${call.callId}/audio`, { method: 'POST', headers: { 'content-type': 'audio/wav' }, body: buf });
+      if (turn.heard) add('CALLER', turn.heard);
+      await handleTurn(turn);
+    } catch (e) { warn(e.message); setState('connected'); }
+  }
+
+  async function talk() {
+    const mode = $('sttMode').value;
+    if (mode === 'browser') { if (listening) recognition?.stop(); else listenBrowser(); }
+    else if (mode === 'server') { if (rec) await stopRecording(); else await startRecording().catch((e) => warn('Microphone: ' + e.message)); }
+    else $('typed').focus();
+  }
+
+  // ---------- conversation ----------
+  async function send(text) {
+    add('CALLER', text); setState('thinking…');
+    try { await handleTurn(await api(`/api/webcall/${call.callId}/utterance`, { method: 'POST', json: { text } })); }
+    catch (e) { warn(e.message); setState('connected'); }
+  }
+  async function handleTurn(turn) {
+    if (turn.classification) add('NOTE', `Module 3 classified: ${turn.classification.incidentType} / ${turn.classification.severity} (${turn.classification.provider}, confidence ${turn.classification.confidence})`);
+    add('SYSTEM', turn.speech);
+    if (!pollTimer) { pollTimer = setInterval(poll, 2000); }
+    await speak(turn.speech);
+    if ($('auto').checked && $('sttMode').value === 'browser' && call) listenBrowser();
+  }
+
+  async function poll() {
+    if (!call) return;
+    try {
+      const s = await api(`/api/webcall/${call.callId}/status`);
+      $('sEmergency').textContent = s.emergencyId || '—';
+      $('sStage').textContent = s.stage || '—';
+      $('sType').textContent = s.incidentType ? `${s.incidentType} · ${s.severity}` : '—';
+      $('sAmb').textContent = s.ambulance ? `${s.ambulance.vehicleNumber} (${s.ambulance.status})` : 'searching…';
+      $('sHosp').textContent = s.hospital ? s.hospital.name : '—';
+      const route = ['TRANSPORTING', 'AT_HOSPITAL', 'PATIENT_ONBOARD'].includes(s.stage) ? s.transportRoute : s.responseRoute;
+      $('sEta').textContent = route ? `${Math.round(route.etaMin)} min · ${route.distanceKm.toFixed(1)} km (${route.provider})` : '—';
+      drawMap(s);
+      if (s.ended && s.stage === 'COMPLETED') { add('NOTE', 'Patient handed over at hospital. Emergency completed.'); finish(); }
+    } catch { /* transient */ }
+  }
+
+  function drawMap(s) {
+    if (!window.L || !s.location) return;
+    if (!map) { map = L.map('map').setView([s.location.latitude, s.location.longitude], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map); }
+    const put = (key, make) => { if (layers[key]) map.removeLayer(layers[key]); layers[key] = make(); if (layers[key]) layers[key].addTo(map); };
+    put('scene', () => L.circleMarker([s.location.latitude, s.location.longitude], { radius: 9, color: '#ef4444', fillOpacity: .8 }).bindTooltip('Caller'));
+    if (s.hospital) put('hosp', () => L.marker([s.hospital.latitude, s.hospital.longitude]).bindTooltip('🏥 ' + s.hospital.name));
+    if (s.ambulance && s.ambulance.latitude != null) put('amb', () => L.circleMarker([s.ambulance.latitude, s.ambulance.longitude], { radius: 8, color: '#3b82f6', fillOpacity: 1 }).bindTooltip('🚑 ' + s.ambulance.vehicleNumber));
+    if (s.responseRoute?.polyline?.length) put('r1', () => L.polyline(s.responseRoute.polyline, { color: '#3b82f6', weight: 4 }));
+    if (s.transportRoute?.polyline?.length) put('r2', () => L.polyline(s.transportRoute.polyline, { color: '#ef4444', weight: 4, dashArray: '6 6' }));
+  }
+
+  async function startCall() {
+    warn(''); log.innerHTML = ''; setState('locating…'); $('callBtn').disabled = true;
+    const pos = await new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition((p) => resolve(p.coords), () => resolve(null), { timeout: 6000, maximumAge: 60000 });
+    });
+    try {
+      call = await api('/api/webcall/start', { method: 'POST', json: { latitude: pos?.latitude, longitude: pos?.longitude, language: $('lang').value.slice(0, 2) } });
+    } catch (e) { warn(e.message); $('callBtn').disabled = false; setState('idle'); return; }
+    if (call.locationSource !== 'BROWSER_GPS') add('NOTE', 'Location permission not available: using the default service-area location.');
+    ['talkBtn', 'hangBtn', 'typed', 'sendBtn'].forEach((id) => $(id).disabled = false);
+    setState('connected');
+    add('SYSTEM', call.greeting);
+    await speak(call.greeting);
+    if ($('sttMode').value === 'browser') listenBrowser();
+  }
+
+  async function finish() {
+    clearInterval(pollTimer); pollTimer = null; recognition?.abort?.();
+    ['talkBtn', 'hangBtn', 'typed', 'sendBtn'].forEach((id) => $(id).disabled = true);
+    $('callBtn').disabled = false; setState('call ended');
+    const ended = call; call = null;
+    if (ended) await fetch(`/api/webcall/${ended.callId}/hangup`, { method: 'POST', headers: { 'x-call-token': ended.token } }).catch(() => {});
+  }
+
+  $('callBtn').onclick = startCall;
+  $('talkBtn').onclick = talk;
+  $('hangBtn').onclick = () => { add('NOTE', 'You hung up.'); finish(); };
+  $('typeForm').onsubmit = (e) => { e.preventDefault(); const t = $('typed').value.trim(); if (t && call) { $('typed').value = ''; send(t); } };
+  if (!SR) $('sttMode').value = 'text';
+})();
+</script>
+</body>
+</html>

@@ -10,3 +10,8 @@ __pycache__/
 dist/
 build/
 .vscode/
+
+# local SQLite runtime files
+*.db-wal
+*.db-shm
+modules/module_11_database_event_system/prisma/scratch-run.db*

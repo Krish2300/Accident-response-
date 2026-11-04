@@ -63,6 +63,7 @@ export {
   getPrismaClient,
   disconnectPrisma,
   withTransaction,
+  prepareSqlite,
   asDatabase,
   type PrismaDatabase,
 } from './db/client.js';

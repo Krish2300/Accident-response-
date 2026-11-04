@@ -183,7 +183,10 @@ export default function App() {
           <h1 style={{ marginBottom: 4 }}>Emergency Operations Dashboard</h1>
           <p style={{ ...mutedStyle, marginTop: 0 }}>Module 12 live view · Module 10 observed lifecycle</p>
         </div>
-        <button type="button" onClick={signOut}>Sign out</button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <a href="/call" target="_blank" rel="noreferrer">Open caller phone ↗</a>
+          <button type="button" onClick={signOut}>Sign out</button>
+        </div>
       </header>
 
       <section style={cardStyle} aria-labelledby="emergency-heading">

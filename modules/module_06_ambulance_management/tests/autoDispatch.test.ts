@@ -123,6 +123,8 @@ describe('AutoDispatchService', () => {
       emergencyId: 'EMG-1',
       latitude: 12.9716,
       longitude: 77.5946,
+      // A cardiac arrest prefers a unit carrying a defibrillator.
+      requiredEquipment: ['DEFIBRILLATOR'],
     });
   });
 

@@ -421,6 +421,18 @@ async function seedHistory(): Promise<void> {
       source: 'AUTOMATIC',
     });
 
+    // Historical incidents are finished: close the assignment and return the
+    // unit to the fleet. Without this every ambulance stays ASSIGNED after its
+    // first historical incident and the next createAssignment fails with
+    // AMBULANCE_NOT_AVAILABLE, aborting the whole seed.
+    // releaseAssignments is the repository's own close-out path (it stamps
+    // releasedAt); the unit is then made available again.
+    await module11.ambulances.releaseAssignments(ambulance.id);
+    await db.ambulance.update({
+      where: { id: ambulance.id },
+      data: { status: 'AVAILABLE', currentEmergencyId: null },
+    });
+
     await module11.emergencies.update(emergency.id, {
       status: 'COMPLETED',
       assignedAmbulanceId: ambulance.id,

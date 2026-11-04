@@ -30,6 +30,24 @@ export interface AssignmentResult {
   expiresAt: string | null;
 }
 
+/**
+ * Equipment a unit should carry for an incident type. Used to prefer suitable
+ * units; when no available unit carries it the nearest unit is still sent
+ * (a basic unit now beats a perfect unit never), and the match factors say so.
+ */
+export const REQUIRED_EQUIPMENT_BY_INCIDENT: Record<string, string[]> = {
+  CARDIAC_ARREST: ['DEFIBRILLATOR'],
+  UNCONSCIOUS: ['DEFIBRILLATOR'],
+  CHEST_PAIN: ['DEFIBRILLATOR'],
+  SEVERE_BREATHING_DIFFICULTY: ['OXYGEN'],
+  CHOKING: ['OXYGEN'],
+  ALLERGIC_REACTION: ['OXYGEN'],
+};
+
+export function requiredEquipmentFor(incidentType: string | null | undefined): string[] {
+  return incidentType ? REQUIRED_EQUIPMENT_BY_INCIDENT[incidentType] ?? [] : [];
+}
+
 export class AssignmentService {
   private readonly fleet: FleetService;
   private readonly config: Module6Config;
@@ -74,7 +92,20 @@ export class AssignmentService {
       throw new AppError(ErrorCode.AMBULANCE_NOT_AVAILABLE, 'No eligible ambulances are within the configured distance threshold.', 409);
     }
 
-    const best = eligible[0];
+    const required = criteria.requiredEquipment ?? [];
+    const equipped = required.length > 0
+      ? eligible.filter((c) => required.every((code) => (c.ambulance.equipment as string[]).includes(code)))
+      : eligible;
+    const equipmentMatched = required.length > 0 && equipped.length > 0;
+    const rejectedReasons: Record<string, string> = {};
+    if (equipmentMatched) {
+      for (const c of eligible) {
+        if (!equipped.includes(c) && c.distanceKm <= (equipped[0]?.distanceKm ?? 0)) {
+          rejectedReasons[c.ambulance.id] = `missing required equipment: ${required.filter((code) => !(c.ambulance.equipment as string[]).includes(code)).join(', ')}`;
+        }
+      }
+    }
+    const best = equipmentMatched ? equipped[0] : eligible[0];
     if (!best) {
       throw new AppError(ErrorCode.AMBULANCE_NOT_AVAILABLE, 'No eligible ambulance could be selected for this emergency.', 409);
     }
@@ -92,8 +123,12 @@ export class AssignmentService {
           this.config.fleet.trafficFactor,
         ),
         score,
-        matchingFactors: ['nearest', 'available'],
-        rejectedReasons: {},
+        matchingFactors: [
+          equipmentMatched ? 'nearest-with-required-equipment' : 'nearest',
+          'available',
+          ...(required.length > 0 && !equipmentMatched ? [`no available unit carries ${required.join(', ')}`] : []),
+        ],
+        rejectedReasons,
         source: 'AUTOMATIC',
         consideredCandidates: candidates.length,
         decidedByUserId: criteria.decidedByUserId,

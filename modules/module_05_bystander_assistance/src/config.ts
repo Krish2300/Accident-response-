@@ -1,4 +1,4 @@
-import { AppError, ErrorCode, noopLogger, type Logger } from '@resus/core';
+import { noopLogger, type Logger } from '@resus/core';
 
 /** Module 5 configuration, read from the environment. */
 export interface Module5Config {
@@ -30,19 +30,16 @@ function bool(value: string | undefined, fallback: boolean): boolean {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 }
 
+/** The model `.env.example` documents and `scripts/setup-ollama.ps1` installs. */
+export const DEFAULT_OLLAMA_MODEL = 'qwen3:8b';
+
 export function loadModule5Config(env: NodeJS.ProcessEnv = process.env): Module5Config {
   const provider = env.LLM_PROVIDER?.trim() || 'ollama';
-  const model = env.LLM_MODEL?.trim();
-
-  if (provider === 'ollama' && !model) {
-    // Failing loudly beats silently running a different model than the operator
-    // believes is in use.
-    throw new AppError(
-      ErrorCode.LLM_MODEL_NOT_FOUND,
-      'LLM_MODEL is required when LLM_PROVIDER is "ollama". Set it in .env (see scripts/setup-ollama.ps1).',
-      500,
-    );
-  }
+  // Without a `.env` (fresh clone, CI) the documented default model is used
+  // rather than refusing to boot. The effective model is always reported by
+  // GET /api/health/llm, and a model Ollama does not have surfaces there as
+  // LLM_MODEL_NOT_FOUND, with the heuristic fallback taking over.
+  const model = env.LLM_MODEL?.trim() || (provider === 'ollama' ? DEFAULT_OLLAMA_MODEL : undefined);
 
   return {
     llm: {

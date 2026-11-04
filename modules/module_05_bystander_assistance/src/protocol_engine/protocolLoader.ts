@@ -12,6 +12,15 @@ import {
 const moduleDir = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const DEFAULT_PROTOCOL_DIR = resolve(moduleDir, 'protocols');
 
+
+/** Core incident type -> catalogue incident keys that mean the same thing. */
+const INCIDENT_TYPE_ALIASES: Record<string, string[]> = {
+  SEIZURE: ['ACTIVE_SEIZURE'],
+  ACTIVE_SEIZURE: ['SEIZURE'],
+  TRAUMA: ['TRAUMA_INJURY'],
+  TRAUMA_INJURY: ['TRAUMA'],
+};
+
 /**
  * Loads and validates the versioned protocol catalogue.
  *
@@ -160,8 +169,12 @@ export class ProtocolLoader {
 
   /** Protocols whose `applies_to.incident_types` contains the incident type. */
   forIncidentType(incidentType: string): Protocol[] {
+    // The shared emergency vocabulary (`@resus/core` INCIDENT_TYPES) and the
+    // protocol catalogue use different names for two incidents. Accept both so
+    // an emergency classified as SEIZURE or TRAUMA still reaches its protocol.
+    const keys = new Set([incidentType, ...(INCIDENT_TYPE_ALIASES[incidentType] ?? [])]);
     return this.load()
-      .filter((p) => p.applies_to.incident_types.includes(incidentType))
+      .filter((p) => p.applies_to.incident_types.some((type) => keys.has(type)))
       .sort((a, b) => b.priority - a.priority);
   }
 

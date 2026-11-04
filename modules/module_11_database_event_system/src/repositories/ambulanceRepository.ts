@@ -510,6 +510,77 @@ export class AmbulanceRepository {
     return mapAssignment(row as unknown as Record<string, unknown>);
   }
 
+  /**
+   * Accepts an offer on behalf of a crew that has no driver account.
+   *
+   * Used only by the Module 10 autonomous orchestrator. An ambulance with an
+   * assigned driver must answer through the driver app, so this refuses when
+   * `assignedDriverId` is set. The transition and the
+   * AMBULANCE_ASSIGNMENT_ACCEPTED event commit in one transaction, exactly like
+   * a driver acceptance, with `actorType: 'MODULE'` so the record shows who
+   * accepted.
+   */
+  async acceptForUnstaffedCrew(input: { assignmentId: string; actorId: string }): Promise<AmbulanceAssignment | null> {
+    await this.expireDueOffers({ assignmentId: input.assignmentId });
+    const decidedAt = new Date();
+    const row = await guardDatabase(async () => withTransaction(this.db, async (tx) => {
+      const current = await tx.ambulanceAssignment.findUnique({
+        where: { id: input.assignmentId },
+        include: { ambulance: true },
+      });
+      if (!current) return null;
+      if (current.ambulance.assignedDriverId) return null;
+      if (current.status === 'ACCEPTED') return current;
+      if (!['OFFERED', 'ASSIGNED'].includes(current.status) || current.ambulance.status !== 'ASSIGNED') return null;
+      const changed = await tx.ambulanceAssignment.updateMany({
+        where: { id: current.id, status: current.status },
+        data: { status: 'ACCEPTED' },
+      });
+      if (changed.count !== 1) return null;
+      await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_ASSIGNMENT_ACCEPTED', {
+        emergencyId: current.emergencyId,
+        entityType: 'ambulance_assignment',
+        entityId: current.id,
+        actorType: 'MODULE',
+        actorId: input.actorId,
+        payload: { assignmentId: current.id, ambulanceId: current.ambulanceId, emergencyId: current.emergencyId, acceptedAt: decidedAt.toISOString() },
+      }));
+      return tx.ambulanceAssignment.findUniqueOrThrow({ where: { id: current.id } });
+    }), 'Failed to accept assignment for unstaffed crew');
+    return row ? mapAssignment(row as unknown as Record<string, unknown>) : null;
+  }
+
+  /** Driver account linked to an ambulance, if any (null = unstaffed / simulated crew). */
+  async assignedDriverIdOf(ambulanceId: string): Promise<string | null> {
+    return guardDatabase(async () => {
+      const row = await this.db.ambulance.findUnique({ where: { id: ambulanceId }, select: { assignedDriverId: true } });
+      return row?.assignedDriverId ?? null;
+    }, 'Failed to read ambulance driver');
+  }
+
+  /** Returns a finished unit to the fleet: closes its assignments and marks it AVAILABLE. */
+  async releaseToAvailable(ambulanceId: string): Promise<void> {
+    await guardDatabase(async () => withTransaction(this.db, async (tx) => {
+      const now = new Date();
+      await tx.ambulanceAssignment.updateMany({
+        where: { ambulanceId, status: { in: ['OFFERED', 'ASSIGNED', 'ACCEPTED', 'DISPATCHED'] } },
+        data: { status: 'CANCELLED', releasedAt: now },
+      });
+      const before = await tx.ambulance.findUnique({ where: { id: ambulanceId } });
+      await tx.ambulance.update({
+        where: { id: ambulanceId },
+        data: { status: 'AVAILABLE', currentEmergencyId: null, availableAt: now },
+      });
+      await this.events.recordInTransaction(tx as never, defineEvent('AMBULANCE_STATUS_CHANGED', {
+        entityType: 'ambulance',
+        entityId: ambulanceId,
+        actorType: 'MODULE',
+        actorId: 'MODULE_10',
+        payload: { ambulanceId, from: (before?.status ?? 'AT_HOSPITAL') as never, to: 'AVAILABLE' },
+      }));
+    }), 'Failed to release ambulance');
+  }
+
   async dispatchAssignment(input: { ambulanceId: string; emergencyId: string; dispatchedByUserId?: string | null }): Promise<void> {
     await this.expireDueOffers({ emergencyId: input.emergencyId, ambulanceId: input.ambulanceId });
     await guardDatabase(async () => withTransaction(this.db, async (tx) => {
