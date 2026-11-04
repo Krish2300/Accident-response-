@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { AppError, ErrorCode, noopLogger, type Emergency, type Logger, type SpeechProvider, type TextToSpeechProvider } from '@resus/core';
+import { AppError, ErrorCode, findSabarimalaPlace, nearestSabarimalaPlace, noopLogger, type Emergency, type Logger, type SpeechProvider, type TextToSpeechProvider } from '@resus/core';
 import type { AutonomousOrchestrator, ClassificationResult } from '../orchestrator/autonomousOrchestrator.js';
 
 /**
@@ -21,7 +21,7 @@ export interface WebCallDeps {
   calls: {
     open(input: {
       incidentType?: string; severity?: string; latitude?: number; longitude?: number; description?: string | null;
-      channel?: string; language?: string; isSimulation?: boolean; actor?: { actorType?: string; actorId?: string | null };
+      channel?: string; language?: string; isSimulation?: boolean; callerId?: string | null; actor?: { actorType?: string; actorId?: string | null };
     }): Promise<{ emergency: Emergency; session: { id: string } }>;
     close(callSessionId: string, reason?: string): Promise<unknown>;
   };
@@ -32,7 +32,10 @@ export interface WebCallDeps {
     start(input: { emergencyId: string; incidentType?: string; startedBy?: string }): Promise<TurnLike>;
     handleUtterance(input: { sessionId: string; utterance: string }): Promise<TurnLike>;
   };
-  emergencies: { findById(id: string): Promise<Emergency | null> };
+  emergencies: {
+    findById(id: string): Promise<Emergency | null>;
+    update(id: string, patch: { address?: string | null }): Promise<Emergency>;
+  };
   ambulances: { findById(id: string): Promise<{ id: string; vehicleNumber: string; status: string; latitude: number | null; longitude: number | null } | null> };
   hospitals: { findById(id: string): Promise<{ id: string; name: string; latitude: number; longitude: number } | null> };
   routes: { routesForEmergency(emergencyId: string): Promise<Array<{ destinationName: string; estimatedMinutes: number | null; distanceKm: number; provider: string; polyline: Array<[number, number]> }>> };
@@ -60,7 +63,11 @@ interface WebCall {
   language: string;
   latitude: number;
   longitude: number;
-  locationSource: 'BROWSER_GPS' | 'DEFAULT_SERVICE_AREA';
+  locationSource: 'BROWSER_GPS' | 'CALLER_LANDMARK' | 'DEFAULT_SERVICE_AREA';
+  landmark?: string;
+  /** Telephone leg (Exotel helpline): the caller's number and the provider call id. */
+  callerNumber?: string;
+  channel: 'WEB' | 'PHONE';
   emergencyId?: string;
   callSessionId?: string;
   protocolSessionId?: string;
@@ -77,6 +84,7 @@ export interface WebCallTurn {
   terminal: boolean;
   heard?: string;
   emergencyId?: string;
+  caseNumber?: string | null;
   classification?: ClassificationResult;
 }
 
@@ -107,9 +115,22 @@ export class WebCallService {
       ended: false,
       lastActivity: Date.now(),
       busy: Promise.resolve(),
+      channel: 'WEB',
     };
     this.calls.set(call.id, call);
     return { callId: call.id, token: token.toString('base64url'), greeting: GREETING, locationSource: call.locationSource };
+  }
+
+  /**
+   * A call arriving on the dedicated helpline number (Exotel). There is no GPS
+   * on a phone leg, so the caller is located from the landmark they name.
+   */
+  startPhone(input: { callerNumber: string | null; language?: string }): { callId: string; token: string; greeting: string } {
+    const started = this.start({ language: input.language });
+    const call = this.calls.get(started.callId)!;
+    call.channel = 'PHONE';
+    if (input.callerNumber) call.callerNumber = input.callerNumber.slice(0, 32);
+    return { callId: started.callId, token: started.token, greeting: started.greeting };
   }
 
   /** True when the emergency was opened by a browser call handled here. */
@@ -170,9 +191,10 @@ export class WebCallService {
       stage: emergency.status,
       ended: call.ended || emergency.status === 'COMPLETED',
       emergencyId: emergency.id,
+      caseNumber: emergency.caseNumber ?? null,
       incidentType: emergency.incidentType,
       severity: emergency.severity,
-      location: { latitude: emergency.latitude, longitude: emergency.longitude, source: call.locationSource },
+      location: { latitude: emergency.latitude, longitude: emergency.longitude, source: call.locationSource, landmark: call.landmark ?? null },
       classification: call.classification ?? null,
       ambulance: ambulance
         ? { vehicleNumber: ambulance.vehicleNumber, status: ambulance.status, latitude: ambulance.latitude, longitude: ambulance.longitude }
@@ -222,19 +244,39 @@ export class WebCallService {
     const classification = await this.deps.orchestrator.classify(text);
     call.classification = classification;
 
+    // No GPS (phone call, or location permission refused): place the caller at
+    // the landmark they named, e.g. "near Appachimedu" or "അഴുത". A GPS fix is
+    // labelled with the nearest landmark so officers can read it at a glance.
+    if (call.locationSource !== 'BROWSER_GPS') {
+      const match = findSabarimalaPlace(text);
+      if (match) {
+        call.latitude = match.place.latitude;
+        call.longitude = match.place.longitude;
+        call.locationSource = 'CALLER_LANDMARK';
+        call.landmark = `${match.place.name} (${match.place.route.replace(/_/g, ' ').toLowerCase()})`;
+      }
+    } else {
+      const nearest = nearestSabarimalaPlace(call.latitude, call.longitude);
+      if (nearest.distanceKm <= 3) call.landmark = `near ${nearest.place.name} (${nearest.distanceKm.toFixed(1)} km)`;
+    }
+
     const opened = await this.deps.calls.open({
       incidentType: classification.incidentType,
       severity: classification.severity,
       latitude: call.latitude,
       longitude: call.longitude,
       description: text.slice(0, 4000),
-      channel: 'WEB',
+      channel: call.channel,
+      callerId: call.callerNumber ?? null,
       language: call.language,
       isSimulation: false,
       actor: { actorType: 'CALLER', actorId: null },
     });
     call.emergencyId = opened.emergency.id;
     call.callSessionId = opened.session.id;
+    const address = [call.landmark, call.locationSource === 'DEFAULT_SERVICE_AREA' ? 'LOCATION NOT YET KNOWN - default service-area point' : null]
+      .filter(Boolean).join(' · ');
+    if (address) await this.deps.emergencies.update(call.emergencyId, { address }).catch(() => undefined);
     await this.deps.transcripts.appendTranscript({ callSessionId: call.callSessionId, emergencyId: call.emergencyId, speaker: 'SYSTEM', text: GREETING, isFinal: true });
     await this.persist(call, 'CALLER', text);
 
@@ -262,7 +304,7 @@ export class WebCallService {
       turn = await this.advance(call, text, started);
     }
     const lead = 'I am sending an ambulance now. ';
-    return { ...turn, speech: lead + turn.speech, emergencyId: call.emergencyId, classification };
+    return { ...turn, speech: lead + turn.speech, emergencyId: call.emergencyId, caseNumber: opened.emergency.caseNumber ?? null, classification };
   }
 
   private async advance(call: WebCall, text: string, fallback?: TurnLike): Promise<WebCallTurn> {

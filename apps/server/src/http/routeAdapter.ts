@@ -167,6 +167,7 @@ function toHttpRequest(raw: any): HttpRequest<any> {
     query: raw.query ?? {},
     body: raw.body,
     headers: raw.headers ?? {},
+    ip: typeof raw.ip === 'string' ? raw.ip : undefined,
     server: { now: () => new Date() },
   };
 }

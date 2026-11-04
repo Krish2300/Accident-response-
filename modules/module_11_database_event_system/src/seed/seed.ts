@@ -30,7 +30,7 @@
  */
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
-import { createId, DATA_PROVENANCE } from '@resus/core';
+import { createId, DATA_PROVENANCE, SABARIMALA_AMBULANCES, SABARIMALA_HOSPITALS, SABARIMALA_SERVICE_AREA } from '@resus/core';
 import { createModule11 } from '../module.js';
 import { getPrismaClient } from '../db/client.js';
 import { isLearningSampleSeedEnabled } from './learningSampleSeedPolicy.js';
@@ -38,10 +38,16 @@ import { isLearningSampleSeedEnabled } from './learningSampleSeedPolicy.js';
 const db = getPrismaClient();
 const module11 = createModule11({ db, ownsClient: false });
 
-/** Bengaluru, matching MAP_DEFAULT_LAT/LNG in .env.example. */
-const CENTRE = { latitude: 12.9716, longitude: 77.5946 };
+/**
+ * SEED_REGION selects the deployment area. `sabarimala` (the default) seeds the
+ * pilgrim-route hospitals and ambulance posts from `@resus/core` regions;
+ * `demo-bengaluru` keeps the original generic demo fleet.
+ */
+const REGION = (process.env.SEED_REGION ?? 'sabarimala').toLowerCase();
+const IS_SABARIMALA = REGION === 'sabarimala';
+const CENTRE = IS_SABARIMALA ? SABARIMALA_SERVICE_AREA.centre : { latitude: 12.9716, longitude: 77.5946 };
 
-const HOSPITALS = [
+const DEMO_HOSPITALS = [
   {
     name: 'City General Hospital',
     latitude: 12.9784,
@@ -124,7 +130,7 @@ const HOSPITALS = [
   },
 ];
 
-const AMBULANCES = [
+const DEMO_AMBULANCES = [
   {
     vehicleNumber: 'AMB001',
     latitude: 12.9756,
@@ -201,6 +207,10 @@ const AMBULANCES = [
   },
 ];
 
+const HOSPITALS: Array<(typeof DEMO_HOSPITALS)[number] & { address?: string }> = IS_SABARIMALA ? SABARIMALA_HOSPITALS : DEMO_HOSPITALS;
+const AMBULANCES: Array<{ vehicleNumber: string; latitude: number; longitude: number; stationName: string; status?: string; equipment: string[]; crew: Array<{ name: string; role: string; capabilities: string[] }> }> =
+  IS_SABARIMALA ? SABARIMALA_AMBULANCES.map((a) => ({ ...a, status: 'AVAILABLE' })) : DEMO_AMBULANCES;
+
 async function seedOperator(): Promise<void> {
   const email = (process.env.SEED_OPERATOR_EMAIL ?? 'operator@resus.local').toLowerCase();
   const password = process.env.SEED_OPERATOR_PASSWORD ?? 'ChangeMe!2024';
@@ -242,7 +252,7 @@ async function seedHospitals(): Promise<void> {
         capabilitiesJson: JSON.stringify(spec.capabilities),
         traumaLevel: spec.traumaLevel,
         acceptingEmergencies: spec.edOpen,
-        address: `${spec.name}, Bengaluru`,
+        address: spec.address ?? `${spec.name}, Bengaluru`,
         contactPhone: '+918000000000',
         isSimulation: true,
       },
@@ -472,11 +482,32 @@ async function seedHistory(): Promise<void> {
   console.log('[seed] all history is marked SIMULATION and is excluded from production aggregates by default');
 }
 
+/**
+ * A database first seeded with the generic demo fleet (e.g. the committed
+ * dev.db) still holds units hundreds of kilometres away. Module 6 has no
+ * distance cap by default, so those units are taken out of service rather than
+ * ever being offered to a Sabarimala call. Hospitals are already excluded by
+ * Module 7's MODULE7_MAX_DISTANCE_KM.
+ */
+async function retireOutOfRegionFleet(): Promise<void> {
+  if (!IS_SABARIMALA) return;
+  const b = SABARIMALA_SERVICE_AREA.bounds;
+  const result = await db.ambulance.updateMany({
+    where: {
+      status: 'AVAILABLE',
+      OR: [{ latitude: { lt: b.south } }, { latitude: { gt: b.north } }, { longitude: { lt: b.west } }, { longitude: { gt: b.east } }],
+    },
+    data: { status: 'UNAVAILABLE' },
+  });
+  if (result.count > 0) console.log(`[seed] took ${result.count} ambulance(s) outside the Sabarimala service area out of service`);
+}
+
 async function main(): Promise<void> {
   console.log('[seed] starting');
   await seedOperator();
   await seedHospitals();
   await seedAmbulances();
+  await retireOutOfRegionFleet();
   await seedHistory();
 
   const [hospitalCount, ambulanceCount] = await Promise.all([

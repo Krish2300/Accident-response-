@@ -75,6 +75,9 @@ model Emergency {
   /// production rows unless the caller explicitly opts in.
   isSimulation        Boolean  @default(false)
   address             String?
+  /// Human-readable case number allotted at creation, e.g. SBM-2026-000123.
+  /// Quoted by callers and the police control room to retrieve the call.
+  caseNumber          String?  @unique
 
   assignedAmbulance Ambulance?  @relation("EmergencyAssignedAmbulance", fields: [assignedAmbulanceId], references: [id], onDelete: SetNull)
   selectedHospital  Hospital?   @relation("EmergencySelectedHospital", fields: [selectedHospitalId], references: [id], onDelete: SetNull)
@@ -772,4 +775,24 @@ model LearningModelVersion {
 
   @@index([version])
   @@map("learning_model_versions")
+}
+
+/// Who read which call record, when, from where. Append-only (enforced by
+/// triggers in the migration), so access to caller data is always accountable.
+model AccessAudit {
+  id          String   @id
+  at          DateTime @default(now())
+  userId      String
+  userEmail   String
+  role        String
+  action      String
+  emergencyId String?
+  caseNumber  String?
+  ipAddress   String?
+  detail      String?
+
+  @@index([emergencyId])
+  @@index([userId])
+  @@index([at])
+  @@map("access_audit")
 }

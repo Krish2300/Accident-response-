@@ -27,6 +27,10 @@ export interface Emergency {
   assignedAmbulanceId: string | null;
   selectedHospitalId: string | null;
   isSimulation: boolean;
+  /** Allotted case number (e.g. SBM-2026-000123); null for rows created before case numbering. */
+  caseNumber?: string | null;
+  /** Free-text location (landmark / route) when known. */
+  address?: string | null;
 }
 
 export interface Ambulance {

@@ -11,3 +11,4 @@ export * from './domain/models.js';
 export * from './domain/provenance.js';
 export * from './domain/schemas.js';
 export * from './runtime.js';
+export * from './regions/sabarimala.js';

@@ -254,6 +254,8 @@ export const USER_ROLES = [
   'OUTCOME_REVIEWER',
   'DRIVER',
   'AMBULANCE_DRIVER',
+  /** Kerala Police control-room officer: full read access to call records, audited. */
+  'POLICE_CONTROL_ROOM',
   'ADMIN',
 ] as const;
 export type UserRole = (typeof USER_ROLES)[number];

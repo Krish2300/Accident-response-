@@ -9,7 +9,7 @@ Call → Understand → Interact → Assist → Find help → Plan route → Pre
 
 ## Quick start (Windows PowerShell, macOS or Linux)
 
-Requires **Node.js 20+** (https://nodejs.org). Then, from the repository folder:
+Requires **Node.js 22+** (https://nodejs.org). Then, from the repository folder:
 
 ```bash
 npm install
@@ -25,6 +25,7 @@ Then open:
 |---|---|
 | http://localhost:4000/call | **Caller phone** (Chrome or Edge: allow microphone + location, press 📞 Call, and speak) |
 | http://localhost:5173 | **Dispatcher dashboard** (login `operator@resus.local` / `ChangeMe!2024`) |
+| http://localhost:4000/police | **Kerala Police Control Room console** (needs a POLICE_CONTROL_ROOM account, see below) |
 | http://localhost:4000/api/health | Health check and mounted modules |
 
 The first run creates `.env`, applies the database migrations and seeds 6 hospitals and 6 ambulances when the database is empty.
@@ -43,6 +44,75 @@ Unit and integration tests:
 ```bash
 npm test
 ```
+
+## Sabarimala deployment
+
+The region is configured in `packages/core/src/regions/sabarimala.ts`:
+
+- **The whole pilgrim area, not only the Sannidhanam.** The gazetteer has about 40 landmarks with English and Malayalam names across every route:
+  - Road approaches: Kottayam, Ponkunnam, Kanjirappally, Mundakayam, Erumely, Mukkoottuthara, Kanamala, Nilakkal, and Pathanamthitta via Ranni and Laha.
+  - Nilakkal to Pampa: Attathode and Chalakayam.
+  - Main trek: Pampa, Neelimala, Appachimedu, Sabari Peedam, Marakoottam, Saramkuthi, Sannidhanam.
+  - Traditional forest path from Erumely: Perurthode, Kalaketty, Azhutha, Karimala, Valiyanavattam and the others along it.
+  - Pullumedu route: Vandiperiyar, Sathram, Pullumedu, Uppupara.
+- **Phone callers are located by what they say.** A caller with no GPS who says "near Appachimedu" or "അഴുത" is placed at that landmark. Mentions after "to / towards" are treated as destinations, not the caller's position. Later mentions are recorded as location candidates for an officer to confirm.
+- **Seed data:** 13 hospitals and emergency medical centres and 19 ambulance posts along the routes, including off-road/stretcher units on the trek.
+  **The coordinates are approximate and the list is a planning baseline.** Verify both with Kerala Police, the Health Department and the Travancore Devaswom Board before operational use.
+
+### Many calls at the same time
+- Every call is independent: its own case number, protocol session and ambulance.
+- When all suitable units are busy, the emergency waits in a priority queue (CRITICAL first, then oldest). It is assigned automatically as soon as a unit becomes free.
+- Verify on your machine with `npm run test:load` while the system is running (`LOAD_CALLS=50 npm run test:load` for more). With 30 simultaneous calls, all 30 completed and 5 of them waited in the queue.
+- SQLite is fine for a pilot. For a large multi-site deployment move Module 11 to PostgreSQL.
+
+### Case numbers and the Police Control Room
+- Every call is allotted a case number such as `SBM-2026-000123`. It is shown on the caller page, so callers and officers can quote it.
+- Officers use **http://<server>/police**. They see live calls (refreshed every 4 s), can search by case number, phone number or place, and can open the **complete record of any call at any time**. The record includes:
+  - caller number and channel, location and landmark
+  - full transcript and the system event timeline
+  - ambulance assignment and GPS trail, hospital, routes and corridor
+  - protocol sessions and location candidates
+- Records can be exported as JSON.
+- **Every access is written to an append-only audit table** (user, action, time, IP address). The database itself rejects any edit or delete of audit rows. The "Access log" button shows who has viewed a case.
+- Create officer accounts. There is no self-registration, and a one-time strong password is printed:
+
+```bash
+npm run user:add -- --email si.pampa@keralapolice.gov.in --name "SI Pampa Control Room" --role POLICE_CONTROL_ROOM
+```
+```bash
+npm run user:disable -- --email si.pampa@keralapolice.gov.in
+```
+```bash
+npm run user:list
+```
+
+### Dedicated helpline number (Exotel)
+1. Rent a virtual number from Exotel (KYC required). Create a call flow with the **Voicebot** applet pointing to
+   `wss://<your-server>/telephony/exotel/stream?token=<EXOTEL_STREAM_TOKEN>`.
+2. In `.env` set `EXOTEL_ENABLED=true` and set `EXOTEL_STREAM_TOKEN` to a random value of at least 24 characters.
+3. Configure the offline speech engines: `SPEECH_PROVIDER=whisper` with `WHISPER_CPP_BINARY`/`WHISPER_CPP_MODEL`, and `SPEECH_SYNTHESIS_PROVIDER=espeak`. Both run natively on Windows.
+4. The server must be reachable over HTTPS from the internet (for example a cloud VM or a reverse proxy).
+
+Pilgrims dial the helpline. The caller's number is captured, which police and dispatchers see in full and other roles see masked. Their speech goes through the same pipeline as a web call.
+**The Exotel message format follows their Voicebot/AgentStream protocol. Verify it against your account's documentation when the number is provisioned.**
+Until then, use the browser call page `/call` (for example via QR codes on signboards along the route).
+
+### Security measures
+- Role-based access. Only `POLICE_CONTROL_ROOM` and `ADMIN` can read call records. Caller numbers are masked for other roles.
+- Sign-in lockout after 5 failed attempts (15 min). Sign-ins and failures are audited. Police sessions sign out automatically after 15 min idle.
+- Rate limits per IP (sign-in, opening calls, overall). Strict security headers and Content-Security-Policy on the console. API responses are never cached.
+- The password-less developer token route is off unless `RESUS_DEV_TOOLS=true`, and always off in production.
+- There is no default JWT secret. `npm run start:full` generates a strong one. Production refuses to start with a placeholder secret or `CORS_ORIGIN=*`.
+- Web calls are protected by an unguessable id plus a per-call bearer token. The Exotel stream requires a shared secret token.
+
+**Production checklist:**
+- set `NODE_ENV=production` and serve over HTTPS (TLS) behind a reverse proxy with `TRUST_PROXY=true`
+- change `SEED_OPERATOR_PASSWORD`, then create named officer accounts
+- encrypt the disk or database at rest and take regular backups
+- restrict server access to the police network or VPN, and keep the OS and Node updated
+- run a security audit or penetration test before go-live
+
+No system can honestly be called 100 % secure. These measures, plus a professional audit, are the responsible path.
 
 ## What happens on a call (module by module)
 

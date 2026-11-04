@@ -23,6 +23,8 @@ export interface HttpRequest<C = unknown> {
   headers: Record<string, unknown>;
   /** Present when the route is authenticated. */
   user?: AuthContext;
+  /** Client address as seen by the server (honours a trusted proxy when configured). */
+  ip?: string;
   server: { now(): Date };
 }
 

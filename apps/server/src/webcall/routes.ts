@@ -1,10 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppError } from '@resus/core';
 import type { WebCallService } from './webCallService.js';
+import { pageCsp, readAsset } from '../http/staticPages.js';
 
 /**
  * Public Web Call surface. A bystander has no account, so these routes are
@@ -27,22 +25,10 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
 
 const token = (request: FastifyRequest): string => String(request.headers['x-call-token'] ?? '');
 
-function loadPage(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  // Source layout (tsx) and bundled layout (dist/server) are both supported.
-  for (const candidate of [resolve(here, 'caller.html'), resolve(here, '../../apps/server/src/webcall/caller.html'), resolve(process.cwd(), 'apps/server/src/webcall/caller.html')]) {
-    try {
-      return readFileSync(candidate, 'utf8');
-    } catch {
-      // try next
-    }
-  }
-  return '<!doctype html><title>Web call</title><p>caller.html not found.</p>';
-}
-
 export function registerWebCallRoutes(fastify: FastifyInstance, service: WebCallService): void {
-  const page = loadPage();
-  fastify.get('/call', async (_request, reply) => reply.type('text/html; charset=utf-8').send(page));
+  const page = readAsset('webcall/caller.html');
+  fastify.get('/call', async (_request, reply) =>
+    reply.header('content-security-policy', pageCsp({ inlineScript: true, media: true })).type('text/html; charset=utf-8').send(page));
 
   fastify.post('/api/webcall/start', async (request, reply) => {
     const body = parse(startBody, request.body) ?? {};

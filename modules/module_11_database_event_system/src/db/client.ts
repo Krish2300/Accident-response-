@@ -15,7 +15,21 @@ let instance: PrismaClient | null = null;
 export function createPrismaClient(options: { log?: boolean } = {}): PrismaClient {
   return new PrismaClient({
     log: options.log ? ['warn', 'error'] : ['error'],
+    ...(usesSqlite() ? { datasources: { db: { url: singleWriterUrl(process.env.DATABASE_URL ?? '') } } } : {}),
   });
+}
+
+/**
+ * SQLite allows exactly one writer. With a pool of connections, concurrent
+ * calls make writers on different connections wait on the file lock until they
+ * time out (P1008) - which a 30-call load test reproduces immediately. One
+ * connection turns that contention into an orderly in-process queue (each
+ * statement is sub-millisecond), so concurrent calls stay correct and fast.
+ * PostgreSQL deployments keep their normal pool.
+ */
+function singleWriterUrl(url: string): string {
+  if (!url || /[?&]connection_limit=/.test(url)) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}connection_limit=1&socket_timeout=30`;
 }
 
 /** Process-wide singleton used by the server, scripts and the seed. */

@@ -16,7 +16,8 @@
  * Values already set in the real environment always win over `.env`; the
  * automation switches can be turned off with RESUS_FULL_AUTOMATION=false.
  */
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +48,13 @@ async function main(): Promise<void> {
     copyFileSync(resolve(root, '.env.example'), envFile);
     log('created .env from .env.example');
   }
+  // Replace the template JWT secret with a strong random one, once, so sessions
+  // survive restarts and no deployment ever runs on a publicly known secret.
+  const envText = readFileSync(envFile, 'utf8');
+  if (/^JWT_SECRET=(change-me.*|)$/m.test(envText)) {
+    writeFileSync(envFile, envText.replace(/^JWT_SECRET=.*$/m, `JWT_SECRET=${randomBytes(48).toString('hex')}`));
+    log('generated a random JWT_SECRET in .env');
+  }
   const preset = new Set(Object.keys(process.env));
   const dotenv = await import('dotenv');
   dotenv.config({ path: envFile });
@@ -74,19 +82,14 @@ async function main(): Promise<void> {
   if (!run('npx', ['prisma', 'migrate', 'deploy', '--schema', schema])) {
     throw new Error('prisma migrate deploy failed (run `npm install` first?)');
   }
-  if (!existsSync(resolve(root, 'node_modules/.prisma/client/index.js'))) {
-    run('node', ['scripts/prisma-generate.mjs']);
-  }
+  // Always regenerate: the schema may have changed since `npm install`.
+  if (!run('node', ['scripts/prisma-generate.mjs'])) throw new Error('prisma generate failed');
 
-  const { PrismaClient } = await import('@prisma/client');
-  const db = new PrismaClient();
-  const [hospitals, ambulances] = await Promise.all([db.hospital.count(), db.ambulance.count()]);
-  await db.$disconnect();
-  if (hospitals === 0 || ambulances === 0) {
-    log('empty database: seeding operator account, hospitals, ambulances and demo history…');
-    if (!run('npx', ['tsx', 'modules/module_11_database_event_system/src/seed/seed.ts'], { SEED_DEMO_DATA: process.env.SEED_DEMO_DATA ?? 'true' })) {
-      throw new Error('database seed failed');
-    }
+  // Idempotent: adds any missing region hospitals / ambulance posts and the
+  // operator account, never duplicates or deletes recorded history.
+  log(`seeding region '${process.env.SEED_REGION ?? 'sabarimala'}' (idempotent)…`);
+  if (!run('npx', ['tsx', 'modules/module_11_database_event_system/src/seed/seed.ts'], { SEED_DEMO_DATA: process.env.SEED_DEMO_DATA ?? 'false' })) {
+    throw new Error('database seed failed');
   }
 
   const port = process.env.PORT ?? '4000';

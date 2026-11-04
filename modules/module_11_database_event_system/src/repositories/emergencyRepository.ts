@@ -50,6 +50,24 @@ export interface CallerLocationCandidateInput {
   attempt?: number;
 }
 
+/**
+ * Allots the next case number for the current year: `<PREFIX>-<YYYY>-<NNNNNN>`.
+ * Runs inside the creating transaction (and transactions are serialised on
+ * SQLite), and the column is UNIQUE, so two calls can never share a number.
+ */
+async function nextCaseNumber(tx: { emergency: { findFirst(args: unknown): Promise<{ caseNumber: string | null } | null> } }): Promise<string> {
+  const prefix = (process.env.CASE_NUMBER_PREFIX ?? 'SBM').replace(/[^A-Z0-9]/gi, '').toUpperCase() || 'SBM';
+  const year = new Date().getFullYear();
+  const stem = `${prefix}-${year}-`;
+  const last = await tx.emergency.findFirst({
+    where: { caseNumber: { startsWith: stem } },
+    orderBy: { caseNumber: 'desc' },
+    select: { caseNumber: true },
+  });
+  const lastSeq = last?.caseNumber ? Number(last.caseNumber.slice(stem.length)) : 0;
+  return `${stem}${String((Number.isFinite(lastSeq) ? lastSeq : 0) + 1).padStart(6, '0')}`;
+}
+
 export class EmergencyRepository {
   constructor(
     private readonly db: PrismaClient,
@@ -81,9 +99,11 @@ export class EmergencyRepository {
     const row = await guardDatabase(
       async () =>
         withTransaction(this.db, async (tx) => {
+          const caseNumber = await nextCaseNumber(tx as never);
           const created = await tx.emergency.create({
             data: {
               id,
+              caseNumber,
               incidentType,
               severity,
               status: 'CREATED',
@@ -118,6 +138,13 @@ export class EmergencyRepository {
       'Failed to create emergency',
     );
     return mapEmergency(row as unknown as Record<string, unknown>);
+  }
+
+  async findByCaseNumber(caseNumber: string): Promise<Emergency | null> {
+    return guardDatabase(async () => {
+      const row = await this.db.emergency.findUnique({ where: { caseNumber: caseNumber.trim().toUpperCase() } });
+      return row ? mapEmergency(row as unknown as Record<string, unknown>) : null;
+    }, 'Failed to read emergency by case number');
   }
 
   async findById(id: string): Promise<Emergency | null> {

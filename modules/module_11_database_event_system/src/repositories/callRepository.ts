@@ -162,6 +162,13 @@ export class CallRepository {
     }, 'Failed to list transcripts');
   }
 
+  async sessionsForEmergency(emergencyId: string): Promise<CallSessionRecord[]> {
+    return guardDatabase(async () => {
+      const rows = await this.db.callSession.findMany({ where: { emergencyId }, orderBy: { startedAt: 'asc' } });
+      return rows.map((row) => toCallSession(row as unknown as Record<string, unknown>));
+    }, 'Failed to list call sessions');
+  }
+
   async sessionById(id: string): Promise<CallSessionRecord | null> {
     return guardDatabase(async () => {
       const row = await this.db.callSession.findUnique({ where: { id } });

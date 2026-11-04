@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Real-Time Sequential Decision System for Pre-Hospital Emergency Survival - modules 5, 6, 11, 12",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -28,6 +28,10 @@
     "db:migrate:dev": "prisma migrate dev --schema modules/module_11_database_event_system/prisma/schema.prisma",
     "db:reset": "prisma migrate reset --force --schema modules/module_11_database_event_system/prisma/schema.prisma",
     "db:seed": "tsx modules/module_11_database_event_system/src/seed/seed.ts",
+    "user:add": "tsx scripts/manage-users.ts add",
+    "user:disable": "tsx scripts/manage-users.ts disable",
+    "user:list": "tsx scripts/manage-users.ts list",
+    "test:load": "tsx scripts/load-test-calls.ts",
     "db:setup": "npm run db:generate && npm run db:migrate && npm run db:seed",
     "protocols:validate": "tsx modules/module_05_bystander_assistance/src/protocol_engine/validateCatalogues.ts",
     "ollama:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-ollama.ps1",

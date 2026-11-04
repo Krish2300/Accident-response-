@@ -90,3 +90,5 @@ export {
   parseStringArray,
   parseRecord,
 } from './models/mappers.js';
+
+export { AccessAuditRepository, type AccessAuditEntry } from './repositories/accessAuditRepository.js';

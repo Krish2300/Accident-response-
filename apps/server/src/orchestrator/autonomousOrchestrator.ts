@@ -51,6 +51,8 @@ export interface AutonomousConfig {
   hospitalDwellMs: number;
   /** How often idle unstaffed units re-report their station position (keeps them non-stale). */
   stationHeartbeatMs: number;
+  /** How often waiting emergencies are re-offered to newly free units. */
+  queueSweepMs: number;
 }
 
 const bool = (value: string | undefined, fallback: boolean): boolean =>
@@ -71,6 +73,7 @@ export function loadAutonomousConfig(env: NodeJS.ProcessEnv = process.env): Auto
     sceneDwellMs: num(env.MODULE10_SCENE_DWELL_MS, 8000),
     hospitalDwellMs: num(env.MODULE10_HOSPITAL_DWELL_MS, 6000),
     stationHeartbeatMs: num(env.MODULE10_STATION_HEARTBEAT_MS, 120_000),
+    queueSweepMs: num(env.MODULE10_QUEUE_SWEEP_MS, 10_000),
   };
 }
 
@@ -103,6 +106,7 @@ export interface AutonomousDeps {
   bus: DomainEventBusPort;
   emergencies: {
     findById(id: string): Promise<Emergency | null>;
+    list?(filter: { statuses?: string[]; includeSimulation?: boolean; limit?: number }): Promise<Emergency[]>;
     update(
       id: string,
       patch: Partial<{ status: string; incidentType: string; severity: string; selectedHospitalId: string | null }>,
@@ -202,6 +206,8 @@ export class AutonomousOrchestrator {
   /** Per-emergency queue so classification and progress writes never interleave. */
   private readonly statusQueues = new Map<string, Promise<unknown>>();
   private heartbeat: NodeJS.Timeout | undefined;
+  private queueTimer: NodeJS.Timeout | undefined;
+  private sweeping: Promise<void> | null = null;
   private disposed = false;
 
   constructor(private readonly deps: AutonomousDeps) {
@@ -229,6 +235,12 @@ export class AutonomousOrchestrator {
     on(['AMBULANCE_ASSIGNMENT_ACCEPTED'], (event) => this.onAccepted(event));
     on(['AMBULANCE_ASSIGNMENT_DECLINED', 'AMBULANCE_ASSIGNMENT_EXPIRED'], (event) => this.onReleased(event));
     on(['AMBULANCE_DISPATCHED'], (event) => this.onDispatched(event));
+    // A unit became free, or a new emergency could not get one: re-run the queue.
+    on(['AMBULANCE_STATUS_CHANGED'], async (event) => {
+      if ((event.payload as { to?: string } | null)?.to === 'AVAILABLE') await this.sweepQueue();
+    });
+    this.queueTimer = setInterval(() => void this.sweepQueue(), this.deps.config.queueSweepMs);
+    this.queueTimer.unref?.();
 
     void this.stationHeartbeat();
     this.heartbeat = setInterval(() => void this.stationHeartbeat(), this.deps.config.stationHeartbeatMs);
@@ -239,6 +251,7 @@ export class AutonomousOrchestrator {
   async dispose(): Promise<void> {
     this.disposed = true;
     if (this.heartbeat) clearInterval(this.heartbeat);
+    if (this.queueTimer) clearInterval(this.queueTimer);
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
     await Promise.allSettled([...this.tasks, ...this.running.values()]);
   }
@@ -359,6 +372,42 @@ export class AutonomousOrchestrator {
     if (this.running.has(emergencyId)) return;
     const run = this.runMission(emergencyId, ambulanceId).finally(() => this.running.delete(emergencyId));
     this.running.set(emergencyId, run);
+  }
+
+  // -- multi-call queue ---------------------------------------------------------
+
+  /**
+   * Emergencies that are still waiting for a unit (every suitable ambulance was
+   * busy when they came in) are offered to free units in priority order:
+   * CRITICAL before HIGH before MEDIUM before LOW, then oldest first. One sweep
+   * runs at a time; it stops at the first emergency no unit can serve.
+   */
+  sweepQueue(): Promise<void> {
+    if (this.disposed || !this.deps.emergencies.list) return Promise.resolve();
+    if (this.sweeping) return this.sweeping;
+    this.sweeping = this.runSweep().finally(() => { this.sweeping = null; });
+    return this.sweeping;
+  }
+
+  private async runSweep(): Promise<void> {
+    const waiting = (await this.deps.emergencies.list!({ statuses: ['CREATED', 'CALL_ACTIVE', 'CLASSIFIED', 'PROTOCOL_ACTIVE', 'AWAITING_AMBULANCE'], limit: 200 }))
+      .filter((emergency) => !emergency.assignedAmbulanceId);
+    const rank: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+    waiting.sort((a, b) => (rank[a.severity] ?? 9) - (rank[b.severity] ?? 9) || a.createdAt.localeCompare(b.createdAt));
+    for (const emergency of waiting) {
+      if (this.disposed) return;
+      try {
+        await this.deps.assignment.selectAndAssign({
+          emergencyId: emergency.id, latitude: emergency.latitude, longitude: emergency.longitude,
+          requiredEquipment: requiredEquipmentFor(emergency.incidentType),
+        });
+      } catch (error) {
+        // No unit free: mark it as queued (visible to the control room) and stop.
+        await this.setEmergencyStatus(emergency.id, 'AWAITING_AMBULANCE');
+        this.logger.info({ emergencyId: emergency.id, waiting: waiting.length, reason: (error as Error).message }, 'emergency queued for the next free ambulance');
+        return;
+      }
+    }
   }
 
   // -- mission simulation -----------------------------------------------------

@@ -23,6 +23,7 @@ import {
 import { CallRepository, RouteRepository } from './repositories/callRepository.js';
 import { NotificationRepository } from './repositories/notificationRepository.js';
 import { UserRepository } from './repositories/userRepository.js';
+import { AccessAuditRepository } from './repositories/accessAuditRepository.js';
 import { AnalyticsReadRepository } from './repositories/analyticsRepository.js';
 
 /**
@@ -49,6 +50,7 @@ export interface Module11 {
   routes: RouteRepository;
   notifications: NotificationRepository;
   users: UserRepository;
+  accessAudit: AccessAuditRepository;
   analyticsRead: AnalyticsReadRepository;
   /** HTTP surface, as framework-agnostic route definitions for the server. */
   routeDefinitions(): RouteDefinition<any>[];
@@ -88,6 +90,7 @@ export function createModule11(options: Module11Options): Module11 {
     routes: new RouteRepository(db, events),
     notifications: new NotificationRepository(db, events),
     users: new UserRepository(db),
+    accessAudit: new AccessAuditRepository(db),
     analyticsRead: new AnalyticsReadRepository(db),
     routeDefinitions: () => createModule11Routes(module, { nodeEnv: options.nodeEnv }),
     dispose: async () => {

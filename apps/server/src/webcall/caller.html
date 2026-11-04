@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RESUS Emergency Call</title>
+<title>Sabarimala Emergency Call</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root { --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --red:#ef4444; --green:#22c55e; --blue:#3b82f6; --amber:#f59e0b; }
@@ -35,7 +35,7 @@
 </head>
 <body>
 <header>
-  <div><h1>🚑 RESUS Emergency Line</h1><small>Browser call: Module 1 (Web Call) → 2 → 3 → 4/5 → 6–12</small></div>
+  <div><h1>🚑 Sabarimala Emergency Line</h1><small>Browser call: Module 1 (Web Call) → 2 → 3 → 4/5 → 6–12</small></div>
   <span id="state">idle</span>
 </header>
 <main>
@@ -62,7 +62,7 @@
   </section>
   <section class="card">
     <div class="grid">
-      <div class="kv"><b>Emergency</b><span id="sEmergency">—</span></div>
+      <div class="kv"><b>Case number</b><span id="sEmergency">—</span></div>
       <div class="kv"><b>Status</b><span id="sStage">—</span></div>
       <div class="kv"><b>Classified as</b><span id="sType">—</span></div>
       <div class="kv"><b>Ambulance</b><span id="sAmb">—</span></div>
@@ -172,6 +172,7 @@
     catch (e) { warn(e.message); setState('connected'); }
   }
   async function handleTurn(turn) {
+    if (turn.caseNumber) add('NOTE', `Case number allotted: ${turn.caseNumber}. Quote it to the police control room for any follow-up.`);
     if (turn.classification) add('NOTE', `Module 3 classified: ${turn.classification.incidentType} / ${turn.classification.severity} (${turn.classification.provider}, confidence ${turn.classification.confidence})`);
     add('SYSTEM', turn.speech);
     if (!pollTimer) { pollTimer = setInterval(poll, 2000); }
@@ -183,7 +184,7 @@
     if (!call) return;
     try {
       const s = await api(`/api/webcall/${call.callId}/status`);
-      $('sEmergency').textContent = s.emergencyId || '—';
+      $('sEmergency').textContent = s.caseNumber || s.emergencyId || '—';
       $('sStage').textContent = s.stage || '—';
       $('sType').textContent = s.incidentType ? `${s.incidentType} · ${s.severity}` : '—';
       $('sAmb').textContent = s.ambulance ? `${s.ambulance.vehicleNumber} (${s.ambulance.status})` : 'searching…';
@@ -200,7 +201,7 @@
     if (!map) { map = L.map('map').setView([s.location.latitude, s.location.longitude], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map); }
     const put = (key, make) => { if (layers[key]) map.removeLayer(layers[key]); layers[key] = make(); if (layers[key]) layers[key].addTo(map); };
-    put('scene', () => L.circleMarker([s.location.latitude, s.location.longitude], { radius: 9, color: '#ef4444', fillOpacity: .8 }).bindTooltip('Caller'));
+    put('scene', () => L.circleMarker([s.location.latitude, s.location.longitude], { radius: 9, color: '#ef4444', fillOpacity: .8 }).bindTooltip('Caller' + (s.location.landmark ? ' · ' + s.location.landmark : '')));
     if (s.hospital) put('hosp', () => L.marker([s.hospital.latitude, s.hospital.longitude]).bindTooltip('🏥 ' + s.hospital.name));
     if (s.ambulance && s.ambulance.latitude != null) put('amb', () => L.circleMarker([s.ambulance.latitude, s.ambulance.longitude], { radius: 8, color: '#3b82f6', fillOpacity: 1 }).bindTooltip('🚑 ' + s.ambulance.vehicleNumber));
     if (s.responseRoute?.polyline?.length) put('r1', () => L.polyline(s.responseRoute.polyline, { color: '#3b82f6', weight: 4 }));

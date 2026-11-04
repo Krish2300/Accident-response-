@@ -10,7 +10,7 @@ const locationConfirmationBody = z.object({
   message: 'Latitude and longitude must be supplied together.',
 });
 
-const LOCATION_OPERATORS = ['DISPATCHER', 'OPERATOR', 'ADMIN'];
+const LOCATION_OPERATORS = ['DISPATCHER', 'OPERATOR', 'POLICE_CONTROL_ROOM', 'ADMIN'];
 
 export function createCallerLocationRoutes(module11: Module11, locationResolution: CallerLocationResolutionService): RouteDefinition[] {
   return [

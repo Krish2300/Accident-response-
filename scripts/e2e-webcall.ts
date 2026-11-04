@@ -15,7 +15,7 @@
  * E2E_TEXT (first caller sentence), E2E_TIMEOUT_S (default 300).
  */
 const base = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4000';
-const firstText = process.env.E2E_TEXT ?? 'My father collapsed near the bus stop and he is not breathing';
+const firstText = process.env.E2E_TEXT ?? 'My father collapsed near Appachimedu on the way to Sannidhanam and he is not breathing';
 const timeoutS = Number(process.env.E2E_TIMEOUT_S ?? 300);
 
 type Json = Record<string, any>;
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   const health = await request('/api/health');
   console.log(`server ok: ${health.modules.length} modules mounted (${health.modules.join(', ')})\n`);
 
-  const call = await request('/api/webcall/start', { method: 'POST', body: { latitude: 12.9650, longitude: 77.6010, language: 'en' } });
+  const call = await request('/api/webcall/start', { method: 'POST', body: { language: 'en' } });
   say('SYSTEM', call.greeting);
 
   say('CALLER', firstText);
@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   console.log(`        [Module 3] ${turn.classification.incidentType} / ${turn.classification.severity} via ${turn.classification.provider} (confidence ${turn.classification.confidence})`);
   say('SYSTEM', turn.speech);
 
-  const second = 'Yes, he is unresponsive. We are at the main gate of the city bus stand.';
+  const second = 'Yes, he is unresponsive. We are just above the Appachimedu emergency medical centre.';
   say('CALLER', second);
   turn = await request(`/api/webcall/${call.callId}/utterance`, { method: 'POST', token: call.token, body: { text: second } });
   say('SYSTEM', turn.speech);

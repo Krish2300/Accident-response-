@@ -41,7 +41,18 @@ export class AuthService {
     return this.allowDevelopmentToken;
   }
 
+  /** Failed sign-ins per account; 5 within 15 minutes locks it for 15 minutes. */
+  private readonly failures = new Map<string, { count: number; first: number; lockedUntil: number }>();
+  private static readonly MAX_FAILURES = 5;
+  private static readonly WINDOW_MS = 15 * 60_000;
+
   async login(email: string, password: string): Promise<{ token: string; user: AuthContext }> {
+    const key = email.trim().toLowerCase();
+    const now = Date.now();
+    const state = this.failures.get(key);
+    if (state && state.lockedUntil > now) {
+      throw new AppError(ErrorCode.FORBIDDEN, 'Too many failed sign-in attempts. This account is locked for 15 minutes.', 423);
+    }
     const record = await this.users.findByEmail(email);
     // Compare against a dummy hash when the user does not exist, so a missing
     // account and a wrong password take the same amount of time.
@@ -49,9 +60,14 @@ export class AuthService {
     const valid = await bcrypt.compare(password, hash);
 
     if (!record || !valid || !record.isActive) {
+      const current = state && now - state.first < AuthService.WINDOW_MS ? state : { count: 0, first: now, lockedUntil: 0 };
+      current.count += 1;
+      if (current.count >= AuthService.MAX_FAILURES) current.lockedUntil = now + AuthService.WINDOW_MS;
+      this.failures.set(key, current);
       throw new AppError(ErrorCode.UNAUTHORIZED, 'Invalid email or password.', 401);
     }
 
+    this.failures.delete(key);
     return this.issue(record);
   }
 
@@ -118,15 +134,27 @@ export class AuthService {
   }
 }
 
-export function registerAuthRoutes(fastify: FastifyInstance, auth: AuthService): void {
+export interface SignInAudit {
+  record(input: { userId: string; userEmail: string; role: string; action: string; emergencyId: null; caseNumber: null; ipAddress: string | null; detail: string | null }): Promise<void>;
+}
+
+export function registerAuthRoutes(fastify: FastifyInstance, auth: AuthService, audit?: SignInAudit): void {
   fastify.post('/api/auth/login', async (request, reply) => {
-    const body = (request.body ?? {}) as { email?: string; password?: string };
-    if (!body.email || !body.password) {
+    const body = (request.body ?? {}) as { email?: unknown; password?: unknown };
+    if (typeof body.email !== 'string' || typeof body.password !== 'string' || !body.email || !body.password || body.email.length > 254 || body.password.length > 200) {
       return reply.status(422).send({
         error: { code: 'VALIDATION_ERROR', message: 'email and password are required.' },
       });
     }
-    return reply.send(await auth.login(body.email, body.password));
+    const email = body.email;
+    try {
+      const result = await auth.login(email, body.password);
+      await audit?.record({ userId: result.user.userId, userEmail: result.user.email, role: result.user.role, action: 'LOGIN_SUCCESS', emergencyId: null, caseNumber: null, ipAddress: request.ip ?? null, detail: null }).catch(() => undefined);
+      return reply.send(result);
+    } catch (error) {
+      await audit?.record({ userId: '-', userEmail: email.toLowerCase(), role: '-', action: 'LOGIN_FAILED', emergencyId: null, caseNumber: null, ipAddress: request.ip ?? null, detail: (error as Error).message }).catch(() => undefined);
+      throw error;
+    }
   });
 
   fastify.get('/api/auth/me', async (request, reply) => {

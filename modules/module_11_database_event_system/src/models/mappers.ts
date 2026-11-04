@@ -86,6 +86,8 @@ export function mapEmergency(row: Row): Emergency {
     assignedAmbulanceId: str(row.assignedAmbulanceId),
     selectedHospitalId: str(row.selectedHospitalId),
     isSimulation: Boolean(row.isSimulation),
+    caseNumber: str(row.caseNumber),
+    address: str(row.address),
   };
 }
 

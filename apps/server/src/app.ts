@@ -5,6 +5,7 @@ import websocket from '@fastify/websocket';
 import jwt from '@fastify/jwt';
 import {
   RouteTable,
+  SABARIMALA_SERVICE_AREA,
   createConsoleLogger,
   isAppError,
   type Logger,
@@ -46,6 +47,11 @@ import { AutonomousOrchestrator, loadAutonomousConfig } from './orchestrator/aut
 import { WebCallService } from './webcall/webCallService.js';
 import { BrowserTelephonyProvider } from './webcall/browserTelephony.js';
 import { registerWebCallRoutes } from './webcall/routes.js';
+import { SabarimalaGazetteerResolver } from './region/gazetteerResolver.js';
+import { createPoliceRoutes } from './police/policeRoutes.js';
+import { registerStaticPages } from './http/staticPages.js';
+import { registerSecurity } from './http/security.js';
+import { loadExotelConfig, registerExotelStream } from './telephony/exotelStream.js';
 
 /**
  * The server composition root.
@@ -104,8 +110,16 @@ export async function buildServer(
   dependencies: BuildServerDependencies = {},
 ): Promise<BuiltServer> {
   const logger = dependencies.logger ?? createConsoleLogger(config.logLevel, 'server');
-  const fastify = Fastify({ logger: false });
+  const devToolsEnabled = !config.isProduction && process.env.RESUS_DEV_TOOLS === 'true';
+  const fastify = Fastify({
+    logger: false,
+    // Behind a reverse proxy (nginx / cloud load balancer) set TRUST_PROXY=true
+    // so rate limits and the access audit see the real client address.
+    trustProxy: process.env.TRUST_PROXY === 'true',
+    bodyLimit: 1024 * 1024,
+  });
 
+  await registerSecurity(fastify, { isProduction: config.isProduction });
   await fastify.register(cors, {
     origin: config.corsOrigins === '*' ? true : config.corsOrigins,
     credentials: true,
@@ -171,7 +185,9 @@ export async function buildServer(
   });
   const callerLocationResolution = new CallerLocationResolutionService({
     emergencies: module11.emergencies,
-    resolver: dependencies.callerLocationResolver,
+    // Default: the offline Sabarimala landmark gazetteer (candidates only;
+    // a person confirms before the emergency location changes).
+    resolver: dependencies.callerLocationResolver ?? new SabarimalaGazetteerResolver(),
     timeoutMs: Number(process.env.CALLER_LOCATION_LOOKUP_TIMEOUT_MS ?? 3000),
     logger,
   });
@@ -355,8 +371,8 @@ export async function buildServer(
     minConfidence: module2.config.speech.minConfidence,
     captureCallerLocation: async (emergencyId, locationText) => { await callerLocationResolution.capture(emergencyId, locationText); },
     defaultLocation: {
-      latitude: Number(process.env.WEBCALL_DEFAULT_LAT ?? process.env.MAP_DEFAULT_LAT ?? 12.9716),
-      longitude: Number(process.env.WEBCALL_DEFAULT_LNG ?? process.env.MAP_DEFAULT_LNG ?? 77.5946),
+      latitude: Number(process.env.WEBCALL_DEFAULT_LAT || SABARIMALA_SERVICE_AREA.centre.latitude),
+      longitude: Number(process.env.WEBCALL_DEFAULT_LNG || SABARIMALA_SERVICE_AREA.centre.longitude),
     },
     logger,
   });
@@ -370,11 +386,14 @@ export async function buildServer(
     async (token, _secret) => fastify.jwt.verify<Record<string, unknown>>(token),
     config.jwtSecret,
     config.jwtExpiresIn,
-    !config.isProduction,
+    // Password-less token minting and the protocol chat harness are developer
+    // tools: never on in production, and off everywhere unless asked for.
+    devToolsEnabled,
   );
 
-  registerAuthRoutes(fastify, auth);
+  registerAuthRoutes(fastify, auth, module11.accessAudit);
   registerWebCallRoutes(fastify, webCalls);
+  registerStaticPages(fastify);
 
   // Collect routes from every implemented module into one table.
   const table = new RouteTable();
@@ -390,6 +409,7 @@ export async function buildServer(
   table.addAll(createModule10LifecycleRoutes(module10LifecycleObserver));
   table.addAll(createNlpClassifyRoutes(classification));
   table.addAll(createCallerLocationRoutes(module11, callerLocationResolution));
+  table.addAll(createPoliceRoutes(module11));
   const registered = registerRoutes(fastify as never, table.routes as RouteDefinition<any>[], {
     authenticate: async (request) => auth.authenticate(request as never),
   });
@@ -434,7 +454,10 @@ export async function buildServer(
 
   // Mounted last, and never in production: the harness must not shadow or
   // outlive a real route.
-  registerDevHarness(fastify, module11, config.isProduction);
+  registerDevHarness(fastify, module11, !devToolsEnabled);
+
+  // Dedicated helpline number (Exotel Voicebot stream). Inert unless configured.
+  registerExotelStream(fastify, { webCalls, synthesis: module2.synthesisProvider, config: loadExotelConfig(), logger });
 
   fastify.get('/ws', { websocket: true }, (socket, request) => {
     const url = new URL(request.url, 'http://localhost');

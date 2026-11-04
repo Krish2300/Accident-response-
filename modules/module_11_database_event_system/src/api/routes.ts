@@ -181,6 +181,16 @@ const outcomeGrantPageQuery = z.object({
  * every workflow in the specification starts with a created emergency; in a
  * larger deployment this moves to the call-intake module unchanged.
  */
+/**
+ * Caller phone numbers are personal data. Only the police control room and
+ * administrators see them in full; every other role sees the last 4 digits.
+ */
+const FULL_CALLER_ROLES = new Set(['POLICE_CONTROL_ROOM', 'ADMIN', 'DISPATCHER']);
+function maskCaller<T extends { callerId?: string | null }>(item: T, role: string | undefined): T {
+  if (!item.callerId || (role && FULL_CALLER_ROLES.has(role))) return item;
+  return { ...item, callerId: `••••${item.callerId.slice(-4)}` };
+}
+
 export function createModule11Routes(
   module11: Module11,
   options: { nodeEnv?: 'development' | 'test' | 'production' } = {},
@@ -270,7 +280,7 @@ export function createModule11Routes(
           offset: query.offset,
         });
         return reply.send(
-          paginated(items, items.length, query.limit ?? 100, query.offset ?? 0),
+          paginated(items.map((item) => maskCaller(item, request.user?.role)), items.length, query.limit ?? 100, query.offset ?? 0),
         );
       },
     },
@@ -280,7 +290,7 @@ export function createModule11Routes(
       module: 'module_11',
       summary: 'Read one emergency',
       auth: { roles: ['OPERATOR', 'DISPATCHER', 'CLINICAL_SUPERVISOR', 'ADMIN'] },
-      handler: async (request, reply) => reply.send(await emergencies.requireById(String(request.params.id ?? ''))),
+      handler: async (request, reply) => reply.send(maskCaller(await emergencies.requireById(String(request.params.id ?? '')), request.user?.role)),
     },
     {
       method: 'POST',

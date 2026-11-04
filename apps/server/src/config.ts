@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 /**
@@ -119,10 +120,15 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env): ServerCo
   // In development an empty secret is tolerable, because nothing depends on it.
   // In production a default or missing secret would let anyone mint operator
   // tokens, so it is a hard failure.
-  if (isProduction && (!parsed.JWT_SECRET || parsed.JWT_SECRET.length < 32)) {
+  const placeholderSecret = /change-me|changeme|development-only/i.test(parsed.JWT_SECRET);
+  if (isProduction && (!parsed.JWT_SECRET || parsed.JWT_SECRET.length < 32 || placeholderSecret)) {
     throw new Error(
       'JWT_SECRET must be set to at least 32 characters when NODE_ENV=production. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"',
     );
+  }
+
+  if (isProduction && parsed.CORS_ORIGIN.trim() === '*') {
+    throw new Error('CORS_ORIGIN=* is not allowed when NODE_ENV=production; list the exact dashboard origins.');
   }
 
   return {
@@ -132,7 +138,10 @@ export function loadServerConfig(env: NodeJS.ProcessEnv = process.env): ServerCo
     host: parsed.HOST,
     logLevel: parsed.LOG_LEVEL,
     corsOrigins: parsed.CORS_ORIGIN === '*' ? '*' : parsed.CORS_ORIGIN.split(',').map((o) => o.trim()),
-    jwtSecret: parsed.JWT_SECRET || 'development-only-insecure-secret',
+    // Never fall back to a well-known string: anyone who knew it could forge an
+    // officer's token. Without a configured secret each process gets a random
+    // one (sessions then end on restart; `npm run start:full` persists one).
+    jwtSecret: parsed.JWT_SECRET && !placeholderSecret ? parsed.JWT_SECRET : randomBytes(48).toString('hex'),
     jwtExpiresIn: parsed.JWT_EXPIRES_IN,
     asterisk: {
       greeting: parsed.ASTERISK_GREETING,
