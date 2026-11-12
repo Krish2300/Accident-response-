@@ -15,10 +15,11 @@
   button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); }
   input, select { background:#08101d; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
   #login { max-width:360px; margin:12vh auto; background:var(--card); padding:24px; border-radius:12px; display:flex; flex-direction:column; gap:10px; }
-  #app { display:none; grid-template-columns:minmax(320px,420px) minmax(0,1fr); height:calc(100vh - 58px); }
-  @media (max-width: 900px) { #app { grid-template-columns:1fr; height:auto; } }
-  #listPane { border-right:1px solid var(--line); overflow-y:auto; }
-  .filters { display:flex; gap:6px; padding:10px; position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  #app { display:none; grid-template-columns:minmax(280px,330px) minmax(300px,380px) minmax(0,1fr); height:calc(100vh - 58px); }
+  @media (max-width: 1100px) { #app { grid-template-columns:minmax(260px,320px) minmax(0,1fr); height:auto; min-height:calc(100vh - 58px); } #listPane { grid-column:1; grid-row:1; } #detail { grid-column:2; grid-row:1; } #livePane { grid-column:1/-1; grid-row:2; max-height:50vh; border-top:1px solid var(--line); border-right:0 !important; } }
+  @media (max-width: 700px) { #app { grid-template-columns:1fr; } #listPane, #detail, #livePane { grid-column:1; grid-row:auto; } #listPane { max-height:40vh; } #detail { min-height:50vh; } #livePane { max-height:55vh; } }
+  #listPane, #livePane { border-right:1px solid var(--line); overflow-y:auto; }
+  .filters { display:flex; gap:6px; padding:10px; position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); flex-wrap:wrap; z-index:1; }
   .filters input { flex:1; min-width:140px; }
   .row { padding:10px 12px; border-bottom:1px solid var(--line); cursor:pointer; } .row:hover, .row.sel { background:#14233a; }
   .row b { font-family:ui-monospace,Consolas,monospace; } .meta { color:var(--muted); font-size:12px; margin-top:3px; }
@@ -32,6 +33,14 @@
   .tline.CALLER { border-color:var(--blue); } .tline.SYSTEM { border-color:var(--green); }
   table { width:100%; border-collapse:collapse; font-size:12px; } td { border-bottom:1px solid var(--line); padding:4px 6px; vertical-align:top; }
   .muted { color:var(--muted); } .err { color:var(--red); }
+  #liveHeader { padding:12px; position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line); z-index:1; }
+  #liveHeader h2 { font-size:15px; margin:0 0 4px; } #liveHeader p { margin:0; font-size:12px; color:var(--muted); }
+  .live-case { padding:10px 12px; border-bottom:1px solid var(--line); }
+  .live-case-title { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+  .live-case-title b { font-family:ui-monospace,Consolas,monospace; }
+  .live-line { padding:7px 8px; margin-top:5px; border-radius:6px; background:var(--card); font-size:12px; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .live-line.CALLER { border-left:3px solid var(--blue); } .live-line.SYSTEM { border-left:3px solid var(--green); }
+  .live-line time { display:block; color:var(--muted); font-size:10px; margin-bottom:2px; }
 </style>
 </head>
 <body>
@@ -56,9 +65,14 @@
     </div>
     <div id="list"></div>
   </section>
+  <section id="livePane" aria-label="Live transcripts for all active calls">
+    <div id="liveHeader"><h2>Live transcripts · all active calls</h2><p id="liveStatus" aria-live="polite">Sign in to view live call transcripts.</p></div>
+    <div id="liveList" aria-live="polite"></div>
+  </section>
   <section id="detail"><p class="muted">Select a call to see its full record.</p></section>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/police.js"></script>
+<script src="/police-live-transcripts.js"></script>
 </body>
 </html>

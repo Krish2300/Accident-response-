@@ -45,8 +45,11 @@ export function pageCsp(options: { inlineScript?: boolean; media?: boolean } = {
 export function registerStaticPages(fastify: FastifyInstance): void {
   const police = readAsset('police/police.html');
   const policeJs = readAsset('police/police.js');
+  const policeLiveTranscriptsJs = readAsset('police/police-live-transcripts.js');
   fastify.get('/police', async (_request, reply) =>
     reply.header('content-security-policy', pageCsp()).header('cache-control', 'no-store').type('text/html; charset=utf-8').send(police));
   fastify.get('/police.js', async (_request, reply) =>
     reply.header('cache-control', 'no-store').type('application/javascript; charset=utf-8').send(policeJs));
+  fastify.get('/police-live-transcripts.js', async (_request, reply) =>
+    reply.header('cache-control', 'no-store').type('application/javascript; charset=utf-8').send(policeLiveTranscriptsJs));
 }
